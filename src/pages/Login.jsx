@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth, UserRole } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,13 +20,13 @@ const Login = () => {
     return null;
   }
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>, role: UserRole) => {
+  const handleSubmit = async (e, role) => {
     e.preventDefault();
     setIsLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
+    const email = formData.get('email');
+    const password = formData.get('password');
 
     const success = await login(email, password, role);
 
@@ -40,7 +40,7 @@ const Login = () => {
     setIsLoading(false);
   };
 
-  const LoginForm = ({ role }: { role: UserRole }) => (
+  const LoginForm = ({ role }) => (
     <form onSubmit={(e) => handleSubmit(e, role)} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor={`${role}-email`}>Email</Label>
