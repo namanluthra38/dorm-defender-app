@@ -21,10 +21,8 @@
     "noImplicitAny": false,
     "noFallthroughCasesInSwitch": false,
 
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    // `baseUrl` and `paths` are declared in the root `tsconfig.json`
+    // to avoid duplication and potential editor/TS server conflicts.
   },
   "include": ["src"]
 }

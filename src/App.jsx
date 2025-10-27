@@ -7,6 +7,14 @@ import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Login from "./pages/Login";
 import StudentHome from "./pages/StudentHome";
+import StudentDashboard from "./pages/StudentDashboard";
+import Room from "./pages/Room";
+import Fees from "./pages/Fees";
+import Complaints from "./pages/Complaints";
+import Announcements from "./pages/Announcements";
+import Support from "./pages/Support";
+import StudentProfile from "./pages/StudentProfile";
+import StudentSettings from "./pages/StudentSettings";
 import WardenHome from "./pages/WardenHome";
 import AdminHome from "./pages/AdminHome";
 import NotFound from "./pages/NotFound";
@@ -24,17 +32,26 @@ const App = () => (
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
             <Route
-              path="/student"
+              path="/student/*"
               element={
-                <ProtectedRoute allowedRole="student">
+                <ProtectedRoute allowedRole="STUDENT">
                   <StudentHome />
                 </ProtectedRoute>
               }
-            />
+            >
+              <Route index element={<StudentDashboard />} />
+              <Route path="room" element={<Room />} />
+              <Route path="fees" element={<Fees />} />
+              <Route path="complaints" element={<Complaints />} />
+              <Route path="announcements" element={<Announcements />} />
+                <Route path="profile" element={<StudentProfile />} />
+                <Route path="settings" element={<StudentSettings />} />
+              <Route path="support" element={<Support />} />
+            </Route>
             <Route
               path="/warden"
               element={
-                <ProtectedRoute allowedRole="warden">
+                <ProtectedRoute allowedRole="WARDEN">
                   <WardenHome />
                 </ProtectedRoute>
               }
@@ -42,7 +59,7 @@ const App = () => (
             <Route
               path="/admin"
               element={
-                <ProtectedRoute allowedRole="admin">
+                <ProtectedRoute allowedRole="ADMIN">
                   <AdminHome />
                 </ProtectedRoute>
               }
