@@ -18,6 +18,7 @@ import StudentSettings from "./pages/StudentSettings";
 import WardenHome from "./pages/WardenHome";
 import AdminHome from "./pages/AdminHome";
 import NotFound from "./pages/NotFound";
+import HostelBooking from "./pages/HostelBooking";
 
 const queryClient = new QueryClient();
 
@@ -41,12 +42,14 @@ const App = () => (
             >
               <Route index element={<StudentDashboard />} />
               <Route path="room" element={<Room />} />
+              <Route path="booking" element={<HostelBooking />} />
               <Route path="fees" element={<Fees />} />
               <Route path="complaints" element={<Complaints />} />
               <Route path="announcements" element={<Announcements />} />
                 <Route path="profile" element={<StudentProfile />} />
                 <Route path="settings" element={<StudentSettings />} />
               <Route path="support" element={<Support />} />
+
             </Route>
             <Route
               path="/warden"

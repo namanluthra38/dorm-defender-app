@@ -1,10 +1,17 @@
 import React from 'react';
-import { User, DollarSign, MessageSquare, FileText, CheckCircle } from 'lucide-react';
+import { User, DollarSign, MessageSquare, FileText, CheckCircle, Building } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import useStudentDetails from '@/hooks/useStudentDetails';
 
 const StudentDashboard = () => {
+  const { user, studentComposite } = useAuth();
+  const { data, loading: detailsLoading, error: detailsError, refresh } = useStudentDetails();
+  const composite = data ?? studentComposite ?? null;
+  const hostelObj = composite?.hostel ?? null;
+  const roomObj = composite?.room ?? null;
   const summary = {
-    room: 'A-302',
-    due: 1250.0,
+    hostelName: hostelObj?.name ?? '-',
+    room: roomObj?.roomNumber ?? '-',
     complaintsOpen: 1,
     announcementTitle: 'Mess menu updated for next week'
   };
@@ -31,20 +38,21 @@ const StudentDashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+
+        <div className="bg-white border rounded-md p-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm text-gray-500">Hostel</p>
+            <p className="text-xl font-semibold">{summary.hostelName}</p>
+          </div>
+          <Building className="w-6 h-6 text-amber-500" />
+        </div>
+
         <div className="bg-white border rounded-md p-4 flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-500">Room</p>
             <p className="text-xl font-semibold">{summary.room}</p>
           </div>
           <User className="w-6 h-6 text-sky-500" />
-        </div>
-
-        <div className="bg-white border rounded-md p-4 flex items-center justify-between">
-          <div>
-            <p className="text-sm text-gray-500">Due Amount</p>
-            <p className="text-xl font-semibold">₹{summary.due.toFixed(2)}</p>
-          </div>
-          <DollarSign className="w-6 h-6 text-amber-500" />
         </div>
 
         <div className="bg-white border rounded-md p-4 flex items-center justify-between">

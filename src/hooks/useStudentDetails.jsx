@@ -1,22 +1,19 @@
 import { useEffect, useState } from 'react';
 
-// Simple in-memory cache to avoid refetching when multiple components request same student
-const STUDENT_CACHE_KEY = 'me';
-const studentCache = new Map(); // key: 'me', value: student object
+// Cache key for the composite response
+const STUDENT_COMPOSITE_KEY = 'me:composite';
+const compositeCache = new Map(); // key: 'me:composite', value: { student, room, hostel }
 
 // Base URL - keep in sync with AuthContext if changed
 const STUDENT_BASE = 'http://localhost:4000';
 
 async function fetchJson(url, token) {
-  // Debug: show outgoing requests in the browser console
   try {
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(url, { headers });
 
-    // capture raw text for debugging
     const text = await res.text().catch(() => null);
-    // Try to parse JSON
     let parsed = null;
     if (text) {
       try {
@@ -26,12 +23,9 @@ async function fetchJson(url, token) {
       }
     }
 
-    // Debug: log the request and response summary
     try {
-      console.debug('[useStudentDetails] fetch', { url, status: res.status, ok: res.ok, parsed, textSnippet: text ? (text.length > 200 ? text.slice(0, 200) + '...' : text) : null });
-    } catch (e) {
-      // ignore console errors in some environments
-    }
+      console.debug('[useStudentDetails] fetch', { url, status: res.status, ok: res.ok, parsed });
+    } catch (e) {}
 
     if (!res.ok) {
       const error = new Error(`HTTP ${res.status}` + (text ? `: ${text}` : ''));
@@ -41,7 +35,6 @@ async function fetchJson(url, token) {
 
     return parsed;
   } catch (err) {
-    // Debug: log fetch error
     try { console.debug('[useStudentDetails] fetch error', { url, error: err?.message ?? err }); } catch (e) {}
     throw err;
   }
@@ -49,14 +42,11 @@ async function fetchJson(url, token) {
 
 /**
  * useStudentDetails
- * - Always fetches the currently-authenticated student via /students/me
- * Returns: { data: { student }, loading, error, refresh }
+ * - Always fetches the composite: /students/me/full
+ * Returns: { data: { student, room, hostel }, loading, error, refresh }
  */
 export default function useStudentDetails() {
-  const [data, setData] = useState(() => {
-    const cached = studentCache.get(STUDENT_CACHE_KEY);
-    return cached ? { student: cached } : null;
-  });
+  const [data, setData] = useState(() => compositeCache.get(STUDENT_COMPOSITE_KEY) ? { ...compositeCache.get(STUDENT_COMPOSITE_KEY) } : null);
   const [loading, setLoading] = useState(!data);
   const [error, setError] = useState(null);
 
@@ -69,16 +59,16 @@ export default function useStudentDetails() {
       setError(null);
 
       try {
-        // Fetch student from /students/me
-        let student = studentCache.get(STUDENT_CACHE_KEY);
-        if (!student) {
-          const url = `${STUDENT_BASE}/students/me`;
-          student = await fetchJson(url, token);
-          studentCache.set(STUDENT_CACHE_KEY, student);
+        let composite = compositeCache.get(STUDENT_COMPOSITE_KEY);
+        if (!composite) {
+          const url = `${STUDENT_BASE}/students/me/full`;
+          composite = await fetchJson(url, token);
+          // composite expected shape: { student, room, hostel }
+          compositeCache.set(STUDENT_COMPOSITE_KEY, composite);
         }
 
         if (!mounted) return;
-        setData({ student });
+        setData({ ...composite });
         setLoading(false);
       } catch (e) {
         if (!mounted) return;
@@ -92,18 +82,15 @@ export default function useStudentDetails() {
   }, [token]);
 
   const refresh = async () => {
-    studentCache.delete(STUDENT_CACHE_KEY);
-
+    compositeCache.delete(STUDENT_COMPOSITE_KEY);
     setData(null);
     setLoading(true);
     setError(null);
-
     try {
-      const url = `${STUDENT_BASE}/students/me`;
-      const student = await fetchJson(url, token);
-      studentCache.set(STUDENT_CACHE_KEY, student);
-
-      setData({ student });
+      const url = `${STUDENT_BASE}/students/me/full`;
+      const composite = await fetchJson(url, token);
+      compositeCache.set(STUDENT_COMPOSITE_KEY, composite);
+      setData({ ...composite });
       setLoading(false);
     } catch (e) {
       setError(e);

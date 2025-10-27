@@ -3,10 +3,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import useStudentDetails from '@/hooks/useStudentDetails';
 
 const StudentProfile = () => {
-  const { user } = useAuth();
+  const { user, studentComposite } = useAuth();
   const { data, loading: detailsLoading, error: detailsError, refresh } = useStudentDetails();
 
-  const studentObj = data?.student ?? user ?? {};
+  // Prefer hook data (fresh), fallback to AuthContext composite
+  const composite = data ?? studentComposite ?? null;
+  const studentObj = composite?.student ?? user ?? {};
+  const roomObj = composite?.room ?? null;
+  const hostelObj = composite?.hostel ?? null;
 
   // Helper: format dates safely
   function formatDate(d) {
@@ -28,7 +32,9 @@ const StudentProfile = () => {
     address: studentObj?.address ?? '—',
     dateOfBirth: formatDate(studentObj?.dateOfBirth ?? studentObj?.date_of_birth),
     gender: studentObj?.gender ?? '—',
-    phone: studentObj?.phone ?? '—'
+    phone: studentObj?.phone ?? '—',
+    hostelName: hostelObj?.name ?? studentObj?.hostelId ?? '—',
+    roomLabel: roomObj?.roomNumber ?? roomObj?.number ?? roomObj?.id ?? studentObj?.roomId ?? '-'
   };
 
   return (
@@ -40,7 +46,7 @@ const StudentProfile = () => {
 
       <div className="bg-white border rounded-md p-4 max-w-2xl">
         {detailsLoading && <div className="mb-3 text-sm text-gray-500">Loading student details…</div>}
-        {detailsError && <div className="mb-3 text-sm text-rose-600">Failed to load student: {detailsError.message}</div>}
+        {detailsError && <div className="mb-3 text-sm text-rose-600">Failed to load student composite: {detailsError.message}</div>}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-sm text-gray-500">Name</p>
@@ -80,6 +86,16 @@ const StudentProfile = () => {
           <div>
             <p className="text-sm text-gray-500">Phone</p>
             <p className="font-medium">{profile.phone}</p>
+          </div>
+
+          <div>
+            <p className="text-sm text-gray-500">Hostel</p>
+            <p className="font-medium">{profile.hostelName}</p>
+          </div>
+
+          <div>
+            <p className="text-sm text-gray-500">Room</p>
+            <p className="font-medium">{profile.roomLabel}</p>
           </div>
         </div>
 
