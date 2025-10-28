@@ -32,6 +32,17 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
+
+            {/* Make booking a standalone protected page so it doesn't render inside StudentHome layout */}
+            <Route
+              path="/student/booking"
+              element={
+                <ProtectedRoute allowedRole="STUDENT">
+                  <HostelBooking />
+                </ProtectedRoute>
+              }
+            />
+
             <Route
               path="/student/*"
               element={
@@ -42,7 +53,7 @@ const App = () => (
             >
               <Route index element={<StudentDashboard />} />
               <Route path="room" element={<Room />} />
-              <Route path="booking" element={<HostelBooking />} />
+              {/* removed nested booking route so booking page renders standalone */}
               <Route path="fees" element={<Fees />} />
               <Route path="complaints" element={<Complaints />} />
               <Route path="announcements" element={<Announcements />} />

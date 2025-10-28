@@ -9,8 +9,18 @@ import { toast } from 'sonner';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login, user, studentComposite, refreshUserComposite } = useAuth();
+  const { login, user, studentComposite, refreshUserComposite, logout } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+
+  // If the Login page is visited while a user is already authenticated, clear auth state.
+  // This runs only once on mount to avoid interfering with the normal login flow.
+  useEffect(() => {
+    if (user) {
+      try { logout(); } catch (e) { /* ignore */ }
+    }
+    // run only on mount — do not re-run when `user` changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Redirect if already logged in - useEffect to avoid setState during render
   useEffect(() => {
@@ -36,8 +46,14 @@ const Login = () => {
             }
           }
 
+          // Only redirect students away from login if they already have a hostel
           const hasHostel = !!(composite?.student?.hostelId);
-          navigate(hasHostel ? '/student' : '/student/booking');
+          if (hasHostel) {
+            navigate('/student');
+          } else {
+            // If the student does NOT have a hostel, allow them to stay on /login so they can
+            // explicitly use the login page (for example to switch accounts). Do not redirect to booking here.
+          }
         } else {
           navigate(`/${r}`);
         }
