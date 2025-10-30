@@ -1,236 +1,173 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+// src/contexts/AuthContext.jsx
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import api from '@/api/apiClient';
+import { useQueryClient } from '@tanstack/react-query';
 
-const AuthContext = createContext(undefined);
+const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-   const [user, setUser] = useState(null);
-   const [studentComposite, setStudentComposite] = useState(null); // { student, room, hostel }
-   const [token, setToken] = useState(() => {
-     try {
-       return localStorage.getItem('authToken');
-     } catch (e) {
-       return null;
-     }
-   });
-   const [isInitializing, setIsInitializing] = useState(true);
-   // backend auth base URL (development: runs on localhost:4004)
-   const AUTH_BASE = 'http://localhost:4004/auth';
-   // student service base (development: runs on localhost:4000)
-   const STUDENT_BASE = 'http://localhost:4000';
+    const [user, setUser] = useState(null); // minimal user or enriched student object
+    const [isInitializing, setIsInitializing] = useState(true);
+    const queryClient = useQueryClient();
+    const [studentComposite, setStudentComposite] = useState(null);
 
-   // Helper to ensure a user object always has a role to avoid redirects to /undefined
-   const withDefaultRole = (u) => {
-     if (!u) return u;
-     try {
-       if (typeof u.role === 'string' && u.role.trim().length > 0) return u;
-       return { ...u, role: 'STUDENT' };
-     } catch (e) {
-       return { ...u, role: 'STUDENT' };
-     }
-   };
+    const AUTH_BASE = import.meta.env.VITE_AUTH_BASE || 'http://localhost:4004';
+    const STUDENT_BASE = import.meta.env.VITE_STUDENT_BASE || 'http://localhost:4000';
 
-   // Helper to fetch the composite /students/me/full and update state
-   const refreshUserComposite = async () => {
-     const currentToken = token ?? (() => { try { return localStorage.getItem('authToken'); } catch (e) { return null; } })();
-     if (!currentToken) return { success: false, message: 'No token' };
-     try {
-       const res = await fetch(`${STUDENT_BASE}/students/me/full`, {
-         method: 'GET',
-         headers: { Authorization: `Bearer ${currentToken}` },
-       });
-       if (!res.ok) {
-         return { success: false, message: `HTTP ${res.status}` };
-       }
-       const composite = await res.json();
-       // composite expected { student, room, hostel }
-       setStudentComposite(composite);
-       if (composite?.student) {
-         // ensure the student object has a role so UI routing/guards work
-         const studentWithRole = { ...composite.student };
-         if (!studentWithRole.role) studentWithRole.role = 'STUDENT';
-         setUser(withDefaultRole(studentWithRole));
-       }
-       return { success: true, composite };
-     } catch (err) {
-       return { success: false, message: err?.message ?? 'Network error' };
-     }
-   };
+    const token = (() => {
+        try { return localStorage.getItem('authToken'); } catch (e) { return null; }
+    })();
 
-   useEffect(() => {
-     // On mount, if token exists try to load the composite so the app has user info
-     const tryLoad = async () => {
-       try {
-         if (token && !studentComposite) {
-           await refreshUserComposite();
-         }
-       } catch (e) {
-         // ignore
-       } finally {
-         // mark initialization finished regardless of success/failure
-         setIsInitializing(false);
-       }
-     };
-     tryLoad();
-     // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, []);
-
-  /**
-   * Login with email & password. Returns { success, user?, message? }.
-   */
-   const login = async (email, password) => {
-     try {
-       const res = await fetch(`${AUTH_BASE}/login`, {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({ email, password }),
-       });
-
-       let data = null;
-       try {
-         data = await res.json();
-       } catch (e) {
-         // ignore parse errors
-       }
-
-       if (!res.ok) {
-         return { success: false, message: data?.message ?? `HTTP ${res.status}` };
-       }
-
-       // Normalize the login response into a `user`-like object expected by the app.
-       // The auth-service returns { token, role, email } (no nested `user`),
-       // while older frontend expectations were { user: { ... } }.
-       let userFromServer;
-      if (data?.user) {
-        userFromServer = data?.user;
-      } else if (data?.role || data?.email) {
-        userFromServer = { email: data?.email, role: data?.role };
-      } else if (data) {
-        // fallback to using whatever was returned
-        userFromServer = data;
-      } else {
-        userFromServer = { email };
-      }
-
-       // store token if provided
-       if (data?.token) {
-         try {
-           localStorage.setItem('authToken', data?.token);
-           setToken(data?.token);
-         } catch (e) {
-           // ignore
-         }
-       }
-
-       // Try to fetch full student composite from student-service
-       let finalUser = userFromServer;
-       try {
-         let profileToken = token;
-         if (!profileToken) {
-           try { profileToken = data?.token || localStorage.getItem('authToken'); } catch (e) { profileToken = data?.token ?? null; }
-         }
-         if (profileToken) {
-           const profileRes = await fetch(`${STUDENT_BASE}/students/me/full`, {
-             method: 'GET',
-             headers: { Authorization: `Bearer ${profileToken}` },
-           });
-           if (profileRes.ok) {
-             const profileJson = await profileRes.json();
-             // profileJson = { student, room, hostel }
-             if (profileJson?.student) {
-               finalUser = profileJson.student;
-               // ensure a role exists: prefer auth-service role, otherwise default to STUDENT
-               if (!finalUser.role) {
-                 finalUser.role = userFromServer?.role ?? 'STUDENT';
-               }
-             }
-             // store composite but ensure student has a role there too
-             if (profileJson?.student && !profileJson.student.role) {
-               profileJson.student = { ...profileJson.student, role: userFromServer?.role ?? 'STUDENT' };
-             }
-             setStudentComposite(profileJson);
-           }
-         }
-       } catch (e) {
-         // ignore profile fetch errors; keep minimal user info
-       }
-
-       setUser(withDefaultRole(finalUser));
-      // try to ensure studentComposite is loaded in background if token set
-      if (data?.token) {
+    // Helper: ensure role exists
+    const withDefaultRole = (u) => {
+        if (!u) return u;
         try {
-          await refreshUserComposite();
+            if (typeof u.role === 'string' && u.role.trim().length > 0) return u;
+            return { ...u, role: 'STUDENT' };
         } catch (e) {
-          // ignore
+            return { ...u, role: 'STUDENT' };
         }
-      }
+    };
 
-       return { success: true, user: finalUser };
-     } catch (err) {
-       return { success: false, message: err?.message ?? 'Network error' };
-     }
-   };
+    // Fetch composite from student service and cache it in react-query
+    const fetchAndCacheStudentComposite = useCallback(async (token) => {
+        if (!token) return null;
+        try {
+            // Use api client (it may already attach token). Still pass header explicitly to be safe.
+            const res = await api.get(`${STUDENT_BASE}/students/me/full`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const composite = res.data; // expected: { student, room, hostel }
+            queryClient.setQueryData(['studentComposite'], composite);
+            try { setStudentComposite(composite); } catch (e) { /* ignore */ }
+            return composite;
+        } catch (err) {
+            console.debug('fetchStudentComposite failed', err?.response?.status ?? err?.message);
+            return null;
+        }
+    }, [STUDENT_BASE, queryClient]);
 
-   const logout = () => {
-     setUser(null);
-     setStudentComposite(null);
-     setToken(null);
-     try {
-       localStorage.removeItem('authToken');
-     } catch (e) {
-       // ignore
-     }
-   };
+    // On mount: if token exists, hydrate composite (preferred) and set user
+    useEffect(() => {
+        let mounted = true;
+        const run = async () => {
+            const token = localStorage.getItem('authToken');
+            if (token) {
+                try {
+                    // Try to fetch composite directly (we prefer composite.student)
+                    const composite = await fetchAndCacheStudentComposite(token);
+                    if (composite?.student) {
+                        const stud = composite.student;
+                        if (!stud.role) stud.role = 'STUDENT';
+                        setUser(withDefaultRole(stud));
+                        // done
+                    } else {
+                        // If composite not available, optionally try /auth/me to get minimal user
+                        try {
+                            const authResp = await api.get(`${STUDENT_BASE}/students/me`, {
+                                headers: { Authorization: `Bearer ${token}` }
+                            });
+                            setUser(withDefaultRole(authResp.data));
+                        } catch (e) {
+                            // auth/me failed — clear token & user
+                            console.debug('auth/me failed during init:', e?.response?.status ?? e?.message);
+                            try { localStorage.removeItem('authToken'); } catch (ex) {}
+                            setUser(null);
+                        }
+                    }
+                } catch (err) {
+                    console.debug('init composite fetch error', err?.message ?? err);
+                    try { localStorage.removeItem('authToken'); } catch (ex) {}
+                    setUser(null);
+                }
+            }
+            if (mounted) setIsInitializing(false);
+        };
 
-  /**
-   * Fetch the user id (UUID) for the currently logged in user by email.
-   * Returns { success: boolean, id?: string, message?: string }
-   */
-   const fetchUserId = async () => {
-     const email = user?.email;
-     if (!email) {
-       return { success: false, message: 'No user email available' };
-     }
+        run();
 
-     try {
-       let currentToken = token;
-       if (!currentToken) {
-         try { currentToken = localStorage.getItem('authToken'); } catch (e) { currentToken = null; }
-       }
-       const res = await fetch(`${AUTH_BASE}/user/email/${encodeURIComponent(email)}`, {
-         method: 'GET',
-         headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : undefined,
-       });
+        // listen for global unauthorized events from api client
+        const onUnauthorized = () => logout();
+        window.addEventListener('auth:unauthorized', onUnauthorized);
 
-       if (!res.ok) {
-         return { success: false, message: `HTTP ${res.status}` };
-       }
+        return () => {
+            mounted = false;
+            window.removeEventListener('auth:unauthorized', onUnauthorized);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fetchAndCacheStudentComposite]);
 
-       const id = await res.text();
-       try {
-         const parsed = JSON.parse(id);
-         if (typeof parsed === 'string') return { success: true, id: parsed };
-         if (parsed?.id) return { success: true, id: parsed.id };
-       } catch (e) {
-         // not JSON, continue
-       }
+    // Login: call auth/login -> store token -> fetch student composite
+    const login = useCallback(async (email, password) => {
+        try {
+            const resp = await api.post(`${AUTH_BASE}/auth/login`, { email, password });
+            const { token, user: userPayload } = resp.data;
+            if (token) {
+                localStorage.setItem('authToken', token);
+            }
+            const minimalUser = userPayload ?? { email: resp.data.email, role: resp.data.role ?? 'STUDENT' };
+            setUser(withDefaultRole(minimalUser));
 
-       return { success: true, id: id };
-     } catch (err) {
-       return { success: false, message: err?.message ?? 'Network error' };
-     }
-   };
+            // Immediately fetch the student composite using the new token
+            const composite = await fetchAndCacheStudentComposite(token || localStorage.getItem('authToken'));
+            if (composite?.student) {
+                const stud = composite.student;
+                if (!stud.role) stud.role = minimalUser?.role ?? 'STUDENT';
+                setUser(withDefaultRole(stud));
+            }
 
-   return (
-     <AuthContext.Provider value={{ user, studentComposite, token, isInitializing, login, logout, fetchUserId, refreshUserComposite }}>
-       {children}
-     </AuthContext.Provider>
-   );
+            // prime query cache
+            queryClient.invalidateQueries(['studentComposite']);
+
+            return { success: true, user: minimalUser };
+        } catch (err) {
+            const msg = err?.response?.data?.message ?? err.message ?? 'Login failed';
+            return { success: false, message: msg };
+        }
+    }, [AUTH_BASE, fetchAndCacheStudentComposite, queryClient]);
+
+    const logout = useCallback(() => {
+        try { localStorage.removeItem('authToken'); } catch (e) {}
+        setUser(null);
+        queryClient.removeQueries(['studentComposite']);
+    }, [queryClient]);
+
+    // Allow external refresh after booking/assignment
+    const refreshStudentComposite = useCallback(async () => {
+        const token = localStorage.getItem('authToken');
+        const composite = await fetchAndCacheStudentComposite(token);
+        if (composite?.student) {
+            const stud = composite.student;
+            if (!stud.role) stud.role = user?.role ?? 'STUDENT';
+            setUser(withDefaultRole(stud));
+        }
+        return composite;
+    }, [fetchAndCacheStudentComposite, user]);
+
+    const setUserRoleSafe = useCallback((u) => {
+        if (!u) return;
+        if (!u.role) u.role = 'STUDENT';
+        setUser(u);
+    }, []);
+
+    return (
+        <AuthContext.Provider value={{
+            user,
+            token,
+            studentComposite,
+            setUser: setUserRoleSafe,
+            isInitializing,
+            login,
+            logout,
+            refreshStudentComposite
+        }}>
+            {children}
+        </AuthContext.Provider>
+    );
 };
 
 export const useAuth = () => {
-   const context = useContext(AuthContext);
-   if (context === undefined) {
-     throw new Error('useAuth must be used within an AuthProvider');
-   }
-   return context;
+    const ctx = useContext(AuthContext);
+    if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+    return ctx;
 };

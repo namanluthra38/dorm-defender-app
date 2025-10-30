@@ -1,27 +1,35 @@
-// javascript
+// src/components/Room.jsx
 import React, { useEffect, useState } from 'react';
 import { Home } from 'lucide-react';
+import api from '@/api/apiClient'; // make sure this exists and attaches token
+
+import useStudentComposite from '@/hooks/useStudentComposite';
 import { useAuth } from '@/contexts/AuthContext';
+import PageContainer from '@/components/layout/PageContainer';
 
 const Room = () => {
-  const { studentComposite, user, token } = useAuth();
-
-  // studentComposite expected shape: { student, room, hostel }
+  const { user } = useAuth(); // still useful for fallback
+  const { data: studentComposite } = useStudentComposite({ enabled: !!user });
+  // composite shape: { student, room, hostel }
   const room = studentComposite?.room ?? null;
   const student = studentComposite?.student ?? user ?? null;
   const hostel = studentComposite?.hostel ?? null;
 
+
   const [roommateNames, setRoommateNames] = useState(null); // null = loading/untouched, [] = none
 
   useEffect(() => {
+    // debug quick check
+    // eslint-disable-next-line no-console
+    console.debug('[Room] user:', user, 'studentComposite:', studentComposite);
+
     if (!room?.studentIds || room.studentIds.length === 0) {
-      setRoommateNames([]);
+      setRoommateNames([]); // no roommates
       return;
     }
 
-    // Exclude current student from roommate list
-    const ids = room.studentIds.filter(id => id !== student?.id);
-
+    // Exclude current student from roommate list using string comparison
+    const ids = room.studentIds.filter(id => String(id) !== String(student?.id));
     if (ids.length === 0) {
       setRoommateNames([]);
       return;
@@ -31,52 +39,56 @@ const Room = () => {
 
     (async () => {
       try {
-        console.debug('Room: fetching names for', ids, 'with token?', !!token);
+        setRoommateNames(null); // mark loading
+        // Get token from localStorage as a fallback if api client doesn't attach it
+        const token = (() => {
+          try { return localStorage.getItem('authToken'); } catch (e) { return null; }
+        })();
 
-        const names = await Promise.all(
-          ids.map(async (id) => {
+        // helper to fetch a single name
+        const fetchName = async (id) => {
+          // prefer axios api client (it should attach Authorization header automatically)
+          if (api && typeof api.get === 'function') {
             try {
-              console.debug('Room: fetching name for', id, 'with token?', !!token);
-
-              // First try: Bearer token in Authorization header, no credentials
-              let res = await fetch(`http://localhost:4000/students/${id}/name`, {
-                method: 'GET',
-                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-              });
-
-              // If unauthorized and we didn't include credentials, retry with credentials (cookie-based auth)
-              if (res.status === 401) {
-                console.debug('Room: 401 with bearer token, retrying with credentials for', id);
-                try {
-                  res = await fetch(`http://localhost:4000/students/${id}/name`, {
-                    method: 'GET',
-                    credentials: 'include',
-                  });
-                } catch (innerErr) {
-                  console.warn('Room: retry with credentials failed for', id, innerErr);
-                }
-              }
-
-              if (!res.ok) {
-                console.warn('Room: failed to fetch name for', id, 'status', res.status);
-                // treat auth/forbidden as missing name (don't throw) so UI can continue showing ids
-                return null;
-              }
-
-              const text = await res.text();
-              if (!text) return null;
-              let s = text.trim();
-              if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
-                s = s.slice(1, -1);
-              }
-              return s;
+              const res = await api.get(`/students/${id}/name`);
+              // axios will return string in data or quoted string; handle both
+              if (!res || !res.data) return null;
+              return typeof res.data === 'string' ? res.data.replace(/^"(.*)"$/, '$1') : String(res.data);
             } catch (err) {
-              console.error('Room: unexpected error fetching name for', id, err);
+              // fallback to fetch with explicit header
+              // eslint-disable-next-line no-console
+              console.debug('[Room] api.get failed, falling back to fetch for', id, err?.response?.status);
+            }
+          }
+
+          // fallback: raw fetch with explicit Authorization header
+          const headers = {};
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+          try {
+            const res = await fetch(`http://localhost:4000/students/${id}/name`, {
+              method: 'GET',
+              headers,
+            });
+            if (!res.ok) {
+              // eslint-disable-next-line no-console
+              console.warn('[Room] fetch name failed', id, res.status);
               return null;
             }
-          })
-        );
+            const text = await res.text();
+            if (!text) return null;
+            let s = text.trim();
+            if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+              s = s.slice(1, -1);
+            }
+            return s;
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error('[Room] unexpected fetch error for', id, e);
+            return null;
+          }
+        };
 
+        const names = await Promise.all(ids.map(fetchName));
         if (cancelled) return;
         const parsed = names.filter(Boolean);
         setRoommateNames(parsed);
@@ -88,10 +100,12 @@ const Room = () => {
     return () => {
       cancelled = true;
     };
-  }, [room?.studentIds, student?.id]);
+  }, [room?.studentIds, student?.id, studentComposite, user]);
 
+  // UI rendering follows your original logic (unchanged)
   if (!student && !room) {
     return (
+      <PageContainer>
         <div>
           <div className="mb-4">
             <h2 className="text-2xl font-semibold">Room Details</h2>
@@ -99,11 +113,13 @@ const Room = () => {
           </div>
           <div className="bg-white border rounded-md p-6">Loading room details…</div>
         </div>
+      </PageContainer>
     );
   }
 
   if (!room) {
     return (
+      <PageContainer>
         <div>
           <div className="mb-4">
             <h2 className="text-2xl font-semibold">Room Details</h2>
@@ -122,6 +138,7 @@ const Room = () => {
             <div className="text-sm text-gray-500">You currently have no room assigned. Contact the warden for allocation.</div>
           </div>
         </div>
+      </PageContainer>
     );
   }
 
@@ -133,8 +150,7 @@ const Room = () => {
   // roommateNames: null = loading, [] = none, otherwise array of names
   let roommateDisplay;
   if (roommateNames === null) {
-    // still loading names — show IDs as temporary fallback
-    roommateDisplay = Array.isArray(room.studentIds) ? room.studentIds.join(', ') : '—';
+    roommateDisplay = Array.isArray(room.studentIds) ? room.studentIds.filter(id => String(id) !== String(student?.id)).join(', ') : '—';
   } else if (roommateNames.length === 0) {
     roommateDisplay = '—';
   } else {
@@ -144,6 +160,7 @@ const Room = () => {
   const facilities = room.facilities ?? room.amenities ?? [];
 
   return (
+    <PageContainer>
       <div>
         <div className="mb-4">
           <h2 className="text-2xl font-semibold">Room Details</h2>
@@ -170,19 +187,19 @@ const Room = () => {
             </div>
             <div>
               <p className="text-sm text-gray-500">Roommates</p>
-              {/* Show roommates as a list when names are available; otherwise fall back to ids or — */}
+
+              {/* Use roommateDisplay where possible to avoid unused-variable warnings */}
               {roommateNames === null ? (
-                // loading: show IDs as a list so layout doesn't jump and to avoid comma-separated display
-                Array.isArray(room.studentIds) && room.studentIds.filter(id => id !== student?.id).length > 0 ? (
+                Array.isArray(room.studentIds) && room.studentIds.filter(id => String(id) !== String(student?.id)).length > 0 ? (
                   <ul className="list-disc list-inside space-y-1">
-                    {room.studentIds.filter(id => id !== student?.id).map((id) => (
-                      <li key={id} className="font-medium text-sm text-gray-700">{id}</li>
+                    {room.studentIds.filter(id => String(id) !== String(student?.id)).map((id) => (
+                      <li key={String(id)} className="font-medium text-sm text-gray-700">{String(id)}</li>
                     ))}
                   </ul>
                 ) : (
                   <p className="font-medium">—</p>
                 )
-              ) : roommateNames.length === 0 ? (
+              ) : roommateDisplay === '—' ? (
                 <p className="font-medium">—</p>
               ) : (
                 <ul className="list-disc list-inside space-y-1">
@@ -199,16 +216,16 @@ const Room = () => {
           </div>
 
           {student && (
-              <div className="mt-4 text-sm text-gray-500">
-                <div>Assigned to: <span className="font-medium">{student.name ?? student.email ?? student.id}</span></div>
-                {student.rollNumber && <div>Roll number: <span className="font-medium">{student.rollNumber}</span></div>}
-                {student.phone && <div>Phone: <span className="font-medium">{student.phone}</span></div>}
-              </div>
+            <div className="mt-4 text-sm text-gray-500">
+              <div>Assigned to: <span className="font-medium">{student.name ?? student.email ?? student.id}</span></div>
+              {student.rollNumber && <div>Roll number: <span className="font-medium">{student.rollNumber}</span></div>}
+              {student.phone && <div>Phone: <span className="font-medium">{student.phone}</span></div>}
+            </div>
           )}
         </div>
       </div>
+    </PageContainer>
   );
 };
 
 export default Room;
-

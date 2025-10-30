@@ -1,82 +1,93 @@
+// src/components/ProtectedRoute.jsx
+import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useEffect, useState } from 'react';
+import useStudentComposite from '@/hooks/useStudentComposite';
 
-const ProtectedRoute = ({ children, allowedRole }) => {
-
-  // Always call hooks in the same order
-  const { user, isInitializing, studentComposite, refreshUserComposite, token } = useAuth();
+const ProtectedRoute = ({ children, allowedRoles = null, requireHostel = false }) => {
+  const { user, isInitializing } = useAuth();
   const location = useLocation();
-  const [loadingComposite, setLoadingComposite] = useState(false);
 
-  // normalize roles to lowercase strings when available
-  const userRole = typeof user?.role === 'string' ? user.role.trim().toLowerCase() : null;
-  const expectedRole = typeof allowedRole === 'string' ? allowedRole.trim().toLowerCase() : allowedRole;
+  // Determine if we should fetch composite: only fetch when there is a logged-in student
+  const shouldFetchComposite = !!user && String(user.role || '').toLowerCase() === 'student';
 
-  // If user is a student, ensure we know their composite (student/hostel/room) so we can decide routing.
-  useEffect(() => {
-    let cancelled = false;
-    const ensureComposite = async () => {
-      try {
-        if (userRole === 'student' && !studentComposite && token) {
-          setLoadingComposite(true);
-          await refreshUserComposite();
-          // AuthContext will update studentComposite state
-        }
-      } catch (e) {
-        // ignore errors; other parts will handle auth state
-      } finally {
-        if (!cancelled) setLoadingComposite(false);
-      }
-    };
-    ensureComposite();
-    return () => { cancelled = true; };
-    // include refreshUserComposite in deps to satisfy rules, others are fine
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userRole, studentComposite, token, refreshUserComposite]);
+  // useStudentComposite accepts options object (v5 react-query). enable only when needed.
+  const { data: composite, isLoading: compositeLoading, isError: compositeError } = useStudentComposite({
+    enabled: shouldFetchComposite,
+  });
 
-  // While auth is initializing we should not redirect (avoid false negatives during startup)
+  // Debug logs (remove after verifying)
+  // eslint-disable-next-line no-console
+  console.log('ProtectedRoute user:', user, 'composite:', composite, 'loading:', compositeLoading, 'error:', compositeError);
+
+  // 1. while auth provider is initializing, don't redirect
   if (isInitializing) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div>Loading…</div>
-      </div>
+        <div className="min-h-screen flex items-center justify-center">
+          <div>Loading…</div>
+        </div>
     );
   }
 
+  // 2. not logged in -> goto login
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (!userRole) {
-    console.warn('ProtectedRoute: user has no role after initialization, redirecting to default /student', user);
-    return <Navigate to="/student" replace />;
+  // 3. role mismatch with allowedRoles
+  if (allowedRoles && !allowedRoles.map(r => r.toLowerCase()).includes(String(user.role || '').toLowerCase())) {
+    // redirect to user's home or a fallback
+    return <Navigate to={`/${String(user.role || '').toLowerCase()}`} replace />;
   }
 
-  if (loadingComposite) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div>Loading account details…</div>
-      </div>
+  // 4. If requireHostel, we must ensure composite is loaded (or at least not falsely assumed)
+  if (requireHostel && String(user.role || '').toLowerCase() === 'student') {
+
+    // if query is enabled but still loading, wait (avoid false negatives)
+    if (shouldFetchComposite && compositeLoading) {
+      return (
+          <div className="min-h-screen flex items-center justify-center">
+            <div>Loading account details…</div>
+          </div>
+      );
+    }
+
+    // if composite fetch errored or no composite available, be conservative:
+    // - if errored => show an error or allow booking flow depending on your app. Here we'll show an error page.
+    if (compositeError) {
+      return (
+          <div className="min-h-screen flex items-center justify-center text-red-600">
+            <div>Failed to load account details. Please refresh or contact support.</div>
+          </div>
+      );
+    }
+
+    // Now compute whether hostel exists — check multiple shapes safely:
+    const hasHostel = Boolean(
+        // composite.hostel exists (object)
+        (composite && composite.hostel) ||
+
+        // composite.student.hostelId exists (some DTOs store id on student)
+        (composite && composite.student && (composite.student.hostelId || composite.student.hostel)) ||
+
+        // composite.room.hostelId (room may contain hostelId)
+        (composite && composite.room && (composite.room.hostelId || (composite.room.hostel && composite.room.hostel.id))) ||
+
+        // fallback: user itself might include hostelId (if AuthContext set user to student obj)
+        (user && (user.hostelId || user.hostel))
     );
-  }
 
-  // If allowedRole is set and doesn't match the user's role, redirect to their default home
-  if (expectedRole && userRole !== expectedRole) {
-    return <Navigate to={`/${userRole}`} replace />;
-  }
-
-  // If user is a student and does NOT have a hostel assigned, only allow booking route.
-  if (userRole === 'student') {
-    const hasHostel = !!(studentComposite?.student?.hostelId);
-    const bookingPath = '/student/booking';
-    const isBookingRoute = location.pathname === bookingPath || location.pathname.startsWith(`${bookingPath}/`);
-
-    if (!hasHostel && !isBookingRoute) {
-      return <Navigate to={bookingPath} replace />;
+    if (!hasHostel) {
+      // If user is on booking-related routes, allow; else redirect to booking
+      const bookingPath = '/student/booking';
+      const isBookingRoute = location.pathname === bookingPath || location.pathname.startsWith(`${bookingPath}/`);
+      if (!isBookingRoute) {
+        return <Navigate to={bookingPath} replace />;
+      }
     }
   }
 
+  // Default: allow access
   return <>{children}</>;
 };
 

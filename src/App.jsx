@@ -15,10 +15,10 @@ import Announcements from "./pages/Announcements";
 import Support from "./pages/Support";
 import StudentProfile from "./pages/StudentProfile";
 import StudentSettings from "./pages/StudentSettings";
-import WardenHome from "./pages/WardenHome";
 import AdminHome from "./pages/AdminHome";
 import NotFound from "./pages/NotFound";
 import HostelBooking from "./pages/HostelBooking";
+import RequireStudentHostel from "./routes/RequireStudentHostel";
 
 const queryClient = new QueryClient();
 
@@ -47,13 +47,14 @@ const App = () => (
               path="/student/*"
               element={
                 <ProtectedRoute allowedRole="STUDENT">
-                  <StudentHome />
+                  <RequireStudentHostel>
+                    <StudentHome />
+                  </RequireStudentHostel>
                 </ProtectedRoute>
               }
             >
               <Route index element={<StudentDashboard />} />
               <Route path="room" element={<Room />} />
-              {/* removed nested booking route so booking page renders standalone */}
               <Route path="fees" element={<Fees />} />
               <Route path="complaints" element={<Complaints />} />
               <Route path="announcements" element={<Announcements />} />
@@ -62,14 +63,7 @@ const App = () => (
               <Route path="support" element={<Support />} />
 
             </Route>
-            <Route
-              path="/warden"
-              element={
-                <ProtectedRoute allowedRole="WARDEN">
-                  <WardenHome />
-                </ProtectedRoute>
-              }
-            />
+
             <Route
               path="/admin"
               element={
