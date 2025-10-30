@@ -6,9 +6,10 @@ import api from '@/api/apiClient'; // make sure this exists and attaches token
 import useStudentComposite from '@/hooks/useStudentComposite';
 import { useAuth } from '@/contexts/AuthContext';
 import PageContainer from '@/components/layout/PageContainer';
+import { toast } from 'sonner';
 
 const Room = () => {
-  const { user } = useAuth(); // still useful for fallback
+  const { user, token: authToken } = useAuth(); // still useful for fallback; token may be provided by AuthContext
   const { data: studentComposite } = useStudentComposite({ enabled: !!user });
   // composite shape: { student, room, hostel }
   const room = studentComposite?.room ?? null;
@@ -17,6 +18,7 @@ const Room = () => {
 
 
   const [roommateNames, setRoommateNames] = useState(null); // null = loading/untouched, [] = none
+  const [leaveLoading, setLeaveLoading] = useState(false);
 
   useEffect(() => {
     // debug quick check
@@ -159,6 +161,56 @@ const Room = () => {
 
   const facilities = room.facilities ?? room.amenities ?? [];
 
+  const handleLeaveRequest = async () => {
+    // prefer token from auth context, fallback to localStorage
+    const token = authToken ?? (() => { try { return localStorage.getItem('authToken'); } catch (e) { return null; } })();
+
+    // Determine studentId & hostelId
+    const studentId = student?.id ?? studentComposite?.student?.id ?? user?.id ?? null;
+    const hostelId = hostel?.id ?? student?.hostelId ?? room?.hostelId ?? null;
+
+    if (!studentId) {
+      toast.error('Cannot create leave request: no student id available');
+      return;
+    }
+
+    if (!hostelId) {
+      toast.error('Cannot create leave request: hostel id not available');
+      return;
+    }
+
+    setLeaveLoading(true);
+    const REQUEST_BASE = 'http://localhost:4003';
+    try {
+      const body = {
+        type: 'HOSTEL_LEAVE',
+        studentId,
+        details: { hostelId, roomId: room?.id ?? null },
+      };
+
+      const res = await fetch(`${REQUEST_BASE}/requests/leave`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => null);
+        toast.error(`Leave request failed: ${res.status} ${txt ?? ''}`);
+        return;
+      }
+
+      toast.success('Leave request submitted successfully');
+    } catch (err) {
+      toast.error(err?.message ?? String(err));
+    } finally {
+      setLeaveLoading(false);
+    }
+  };
+
   return (
     <PageContainer>
       <div>
@@ -222,10 +274,20 @@ const Room = () => {
               {student.phone && <div>Phone: <span className="font-medium">{student.phone}</span></div>}
             </div>
           )}
-        </div>
-      </div>
-    </PageContainer>
-  );
-};
+          {/* Leave Hostel button */}
+          <div className="mt-4 flex justify-end">
+            <button
+              onClick={handleLeaveRequest}
+              disabled={leaveLoading}
+              className={`ml-2 px-4 py-1 text-white rounded text-sm ${leaveLoading ? 'bg-rose-400 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-700'}`}
+            >
+              {leaveLoading ? 'Requesting…' : 'Request Leave'}
+            </button>
+          </div>
+         </div>
+       </div>
+     </PageContainer>
+   );
+ };
 
-export default Room;
+ export default Room;

@@ -40,7 +40,7 @@ export default function StudentHome() {
           </div>
         )}
 
-        {/* Main content area */}
+
         <main className="flex-1 min-w-0 overflow-auto p-6">
           <div className="max-w-7xl mx-auto">
             <div className="min-h-[60vh] bg-transparent">
