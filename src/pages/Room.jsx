@@ -1,5 +1,5 @@
 // src/components/Room.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Home } from 'lucide-react';
 import api from '@/api/apiClient'; // make sure this exists and attaches token
 
@@ -7,6 +7,8 @@ import useStudentComposite from '@/hooks/useStudentComposite';
 import { useAuth } from '@/contexts/AuthContext';
 import PageContainer from '@/components/layout/PageContainer';
 import { toast } from 'sonner';
+
+const REQUEST_BASE = 'http://localhost:4003';
 
 const Room = () => {
   const { user, token: authToken } = useAuth(); // still useful for fallback; token may be provided by AuthContext
@@ -19,6 +21,14 @@ const Room = () => {
 
   const [roommateNames, setRoommateNames] = useState(null); // null = loading/untouched, [] = none
   const [leaveLoading, setLeaveLoading] = useState(false);
+  // new: whether a pending leave request exists for this student
+  // null = unknown/loading, false = no pending leave, true = pending leave exists
+  const [leaveExists, setLeaveExists] = useState(null);
+
+  // helper to derive studentId used across the component
+  const getStudentId = useCallback(() => {
+    return student?.id ?? studentComposite?.student?.id ?? user?.id ?? null;
+  }, [student, studentComposite, user]);
 
   useEffect(() => {
     // debug quick check
@@ -104,6 +114,49 @@ const Room = () => {
     };
   }, [room?.studentIds, student?.id, studentComposite, user]);
 
+  // new effect: check whether a pending leave request exists for this student
+  useEffect(() => {
+    let cancelled = false;
+    const studentId = getStudentId();
+    if (!studentId) {
+      setLeaveExists(false);
+      return;
+    }
+
+    (async () => {
+      try {
+        setLeaveExists(null); // loading
+        const token = authToken ?? (() => { try { return localStorage.getItem('authToken'); } catch (e) { return null; } })();
+        const url = `${REQUEST_BASE}/requests/exist-leave?studentId=${encodeURIComponent(studentId)}`;
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
+
+        if (cancelled) return;
+        if (res.ok) {
+          setLeaveExists(true);
+        } else if (res.status === 404) {
+          setLeaveExists(false);
+        } else {
+          // for other errors, treat as no existing request but log for debugging
+          // eslint-disable-next-line no-console
+          console.warn('[Room] exist-leave returned', res.status);
+          setLeaveExists(false);
+        }
+      } catch (e) {
+        // network / unexpected - do not block UI, treat as no existing leave but keep warning
+        // eslint-disable-next-line no-console
+        console.error('[Room] failed to check exist-leave', e);
+        if (!cancelled) setLeaveExists(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [getStudentId, authToken]);
+
   // UI rendering follows your original logic (unchanged)
   if (!student && !room) {
     return (
@@ -166,7 +219,7 @@ const Room = () => {
     const token = authToken ?? (() => { try { return localStorage.getItem('authToken'); } catch (e) { return null; } })();
 
     // Determine studentId & hostelId
-    const studentId = student?.id ?? studentComposite?.student?.id ?? user?.id ?? null;
+    const studentId = getStudentId();
     const hostelId = hostel?.id ?? student?.hostelId ?? room?.hostelId ?? null;
 
     if (!studentId) {
@@ -180,7 +233,6 @@ const Room = () => {
     }
 
     setLeaveLoading(true);
-    const REQUEST_BASE = 'http://localhost:4003';
     try {
       const body = {
         type: 'HOSTEL_LEAVE',
@@ -204,6 +256,8 @@ const Room = () => {
       }
 
       toast.success('Leave request submitted successfully');
+      // mark leave exists to disable button
+      setLeaveExists(true);
     } catch (err) {
       toast.error(err?.message ?? String(err));
     } finally {
@@ -278,10 +332,13 @@ const Room = () => {
           <div className="mt-4 flex justify-end">
             <button
               onClick={handleLeaveRequest}
-              disabled={leaveLoading}
-              className={`ml-2 px-4 py-1 text-white rounded text-sm ${leaveLoading ? 'bg-rose-400 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-700'}`}
+              disabled={leaveLoading || leaveExists === true}
+              className={`ml-2 px-4 py-1 text-white rounded text-sm ${
+                leaveLoading ? 'bg-rose-400 cursor-not-allowed' : (leaveExists === true ? 'bg-gray-400 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-700')
+              }`}
             >
-              {leaveLoading ? 'Requesting…' : 'Request Leave'}
+              {/* if leaveExists true -> show message; if loading request -> show Requesting…; otherwise normal text */}
+              {leaveLoading ? 'Requesting…' : (leaveExists === true ? 'Leave request exists' : 'Request Leave')}
             </button>
           </div>
          </div>

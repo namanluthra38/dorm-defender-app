@@ -13,16 +13,12 @@ const Login = () => {
   const { login, user, refreshStudentComposite: refreshUserComposite, logout } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
-  // On mount: if user already present, clear auth state so login page is fresh
   useEffect(() => {
     if (user) {
       try { logout(); } catch (e) { /* ignore */ }
     }
-    // run only on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Redirect if already logged in as student
   useEffect(() => {
     if (user && user.role === 'STUDENT') {
       (async () => {

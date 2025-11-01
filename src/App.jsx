@@ -19,6 +19,7 @@ import AdminHome from "./pages/AdminHome";
 import NotFound from "./pages/NotFound";
 import HostelBooking from "./pages/HostelBooking";
 import RequireStudentHostel from "./routes/RequireStudentHostel";
+import WardenHome from "./pages/WardenHome.jsx";
 
 const queryClient = new QueryClient();
 
@@ -33,7 +34,6 @@ const App = () => (
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
 
-            {/* Make booking a standalone protected page so it doesn't render inside StudentHome layout */}
             <Route
               path="/student/booking"
               element={
@@ -72,7 +72,16 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+
+            {/*<Route*/}
+            {/*    path="/warden"*/}
+            {/*    element={*/}
+            {/*      <ProtectedRoute allowedRole="WARDEN">*/}
+            {/*        <WardenHome />*/}
+            {/*      </ProtectedRoute>*/}
+            {/*    }*/}
+            {/*/>*/}
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
