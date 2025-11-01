@@ -1,11 +1,21 @@
 // src/components/layout/Topbar.jsx
-import React, { useState, useRef, useEffect } from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import { Bell, ChevronDown, Menu } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import * as WardenCtx from '@/contexts/WardenAuthContext';
 import { useNavigate } from 'react-router-dom';
 
 export default function Topbar({ onMenuClick = () => {} }) {
-    const { user, logout } = useAuth();
+    const { user: studentUser, logout: studentLogout } = useAuth();
+    // read optional warden context; do not throw if not inside provider
+    const wardenCtx = React.useContext(WardenCtx.WardenAuthContext);
+    const wardenUser = wardenCtx?.user ?? null;
+    const wardenLogout = wardenCtx?.logout ?? null;
+
+    // prefer warden user when present
+    const user = wardenUser ?? studentUser;
+    const logout = wardenLogout ?? studentLogout;
+
     const [open, setOpen] = useState(false);
     const ref = useRef();
     const navigate = useNavigate();
@@ -18,6 +28,25 @@ export default function Topbar({ onMenuClick = () => {} }) {
         return () => document.removeEventListener('click', onDoc);
     }, []);
 
+    const goToProfile = () => {
+        if (wardenUser) {
+            navigate('/warden/profile');
+        } else {
+            navigate('/student/profile');
+        }
+    };
+
+    const handleLogout = () => {
+        try {
+            if (typeof logout === 'function') logout();
+        } catch (e) {
+            // swallow
+        }
+        // navigate to the correct login screen
+        if (wardenUser) navigate('/login-warden');
+        else navigate('/login');
+    };
+
     return (
         <div className="bg-white border-b">
             <div className="container mx-auto px-4 py-3 flex items-center justify-between">
@@ -29,7 +58,7 @@ export default function Topbar({ onMenuClick = () => {} }) {
 
                     <div>
                         <h2 className="text-lg font-semibold">Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}</h2>
-                        <p className="text-sm text-gray-500">Student dashboard</p>
+                        <p className="text-sm text-gray-500">{wardenUser ? 'Warden dashboard' : 'Student dashboard'}</p>
                     </div>
                 </div>
 
@@ -44,8 +73,8 @@ export default function Topbar({ onMenuClick = () => {} }) {
 
                         {open && (
                             <div className="absolute right-0 mt-2 w-40 bg-white border rounded-md shadow-lg z-50">
-                                <button onClick={() => navigate('/student/profile')} className="w-full text-left px-3 py-2 hover:bg-gray-50">Profile</button>
-                                <button onClick={() => { logout(); navigate('/login'); }} className="w-full text-left px-3 py-2 text-rose-600 hover:bg-gray-50">Logout</button>
+                                <button onClick={() => { goToProfile(); setOpen(false); }} className="w-full text-left px-3 py-2 hover:bg-gray-50">Profile</button>
+                                <button onClick={() => { handleLogout(); setOpen(false); }} className="w-full text-left px-3 py-2 text-rose-600 hover:bg-gray-50">Logout</button>
                             </div>
                         )}
                     </div>

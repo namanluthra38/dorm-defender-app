@@ -33,7 +33,8 @@ const StudentProfile = () => {
     dateOfBirth: formatDate(studentObj?.dateOfBirth ?? studentObj?.date_of_birth),
     gender: studentObj?.gender ?? '—',
     phone: studentObj?.phone ?? '—',
-    hostelName: hostelObj?.name ?? studentObj?.hostelId ?? '—',
+    // only show hostel name; do not show hostelId
+    hostelName: hostelObj?.name ?? '—',
     roomLabel: roomObj?.roomNumber ?? roomObj?.number ?? roomObj?.id ?? studentObj?.roomId ?? '-'
   };
 

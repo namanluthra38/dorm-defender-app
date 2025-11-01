@@ -1,14 +1,14 @@
 // src/components/Room.jsx
 import React, { useEffect, useState, useCallback } from 'react';
 import { Home } from 'lucide-react';
-import api from '@/api/apiClient'; // make sure this exists and attaches token
+import api from '@/api/studentClient'; // make sure this exists and attaches token
 
 import useStudentComposite from '@/hooks/useStudentComposite';
 import { useAuth } from '@/contexts/AuthContext';
 import PageContainer from '@/components/layout/PageContainer';
 import { toast } from 'sonner';
+import { REQUEST_BASE } from '@/config';
 
-const REQUEST_BASE = 'http://localhost:4003';
 
 const Room = () => {
   const { user, token: authToken } = useAuth(); // still useful for fallback; token may be provided by AuthContext

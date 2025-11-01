@@ -5,22 +5,51 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
-  {
-    extends: [js.configs.recommended, ...tseslint.configs.recommended],
-    files: ["**/*.{ts,tsx}"],
-    languageOptions: {
-      ecmaVersion: 2020,
-      globals: globals.browser,
+    // 1️⃣ ignore build folder
+    { ignores: ["dist"] },
+
+    // 2️⃣ main config for TS + React
+    {
+        extends: [js.configs.recommended, ...tseslint.configs.recommended],
+        files: ["**/*.{ts,tsx,js,jsx}"],
+        languageOptions: {
+            ecmaVersion: 2020,
+            globals: globals.browser,
+        },
+        plugins: {
+            "react-hooks": reactHooks,
+            "react-refresh": reactRefresh,
+        },
+        rules: {
+            ...reactHooks.configs.recommended.rules,
+            "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+            "@typescript-eslint/no-unused-vars": "off",
+        },
     },
-    plugins: {
-      "react-hooks": reactHooks,
-      "react-refresh": reactRefresh,
-    },
-    rules: {
-      ...reactHooks.configs.recommended.rules,
-      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
-      "@typescript-eslint/no-unused-vars": "off",
-    },
-  },
+
+    // 3️⃣ custom rule to block wrong auth imports in warden files
+    {
+        files: ["src/pages/Warden/**", "src/components/Warden/**", "src/warden/**"],
+        rules: {
+            "no-restricted-imports": [
+                "error",
+                {
+                    paths: [
+                        {
+                            name: "@/contexts/AuthContext",
+                            message:
+                                "🚫 Warden pages must use WardenAuthContext (useWardenAuth) instead of AuthContext.",
+                        },
+                    ],
+                    patterns: [
+                        {
+                            group: ["../contexts/AuthContext", "./contexts/AuthContext"],
+                            message:
+                                "🚫 Warden pages must use WardenAuthContext (useWardenAuth) instead of AuthContext.",
+                        },
+                    ],
+                },
+            ],
+        },
+    }
 );

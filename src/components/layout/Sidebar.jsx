@@ -1,5 +1,5 @@
 // src/components/layout/Sidebar.jsx
-import React from 'react';
+import React, { useContext } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
     FileText,
@@ -9,9 +9,14 @@ import {
     Bell,
     Settings,
     Home,
-    Building
+    Building,
+    Users,
+    Grid,
+    ClipboardList,
+    Calendar
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { WardenAuthContext } from '@/contexts/WardenAuthContext';
 
 /**
  * Sidebar
@@ -20,12 +25,77 @@ import { useAuth } from '@/contexts/AuthContext';
  */
 export default function Sidebar({ onToggle }) {
     const { user } = useAuth();
-    const role = (user?.role || 'STUDENT').toString().toLowerCase();
+    // try to read warden context if present (do not throw if not inside provider)
+    const wardenCtx = useContext(WardenAuthContext);
+    const wardenUser = wardenCtx?.user ?? null;
+
+    // prefer wardenUser.role when available, otherwise student user
+    const role = (wardenUser?.role || user?.role || 'STUDENT').toString().toLowerCase();
 
     // common nav link class
     const linkClass = ({ isActive }) =>
         `flex items-center gap-3 px-2 py-2 rounded ${isActive ? 'bg-gray-100 font-semibold' : 'hover:bg-gray-50'}`;
 
+    // Warden-specific nav
+    if (role === 'warden') {
+        return (
+            <nav className="flex flex-col gap-2">
+                <NavLink to="." end className={linkClass} onClick={onToggle}>
+                    <Home className="w-4 h-4 text-slate-600" />
+                    <span className="text-sm">Dashboard</span>
+                </NavLink>
+
+                <NavLink to="students" className={linkClass} onClick={onToggle}>
+                    <Users className="w-4 h-4 text-slate-600" />
+                    <span className="text-sm">Students</span>
+                </NavLink>
+
+                <NavLink to="rooms" className={linkClass} onClick={onToggle}>
+                    <Grid className="w-4 h-4 text-slate-600" />
+                    <span className="text-sm">Rooms</span>
+                </NavLink>
+
+                <NavLink to="requests" className={linkClass} onClick={onToggle}>
+                    <ClipboardList className="w-4 h-4 text-slate-600" />
+                    <span className="text-sm">Requests</span>
+                </NavLink>
+
+                <NavLink to="announcements" className={linkClass} onClick={onToggle}>
+                    <FileText className="w-4 h-4 text-slate-600" />
+                    <span className="text-sm">Announcements</span>
+                </NavLink>
+
+                <NavLink to="attendance" className={linkClass} onClick={onToggle}>
+                    <Calendar className="w-4 h-4 text-slate-600" />
+                    <span className="text-sm">Attendance</span>
+                </NavLink>
+
+                <NavLink to="support" className={linkClass} onClick={onToggle}>
+                    <Bell className="w-4 h-4 text-slate-600" />
+                    <span className="text-sm">Support</span>
+                </NavLink>
+
+                <div className="border-t my-2" />
+
+                <NavLink to="profile" className={linkClass} onClick={onToggle}>
+                    <Settings className="w-4 h-4 text-slate-600" />
+                    <span className="text-sm">Profile</span>
+                </NavLink>
+
+                <NavLink to="settings" className={linkClass} onClick={onToggle}>
+                    <Settings className="w-4 h-4 text-slate-600" />
+                    <span className="text-sm">Settings</span>
+                </NavLink>
+
+                <NavLink to="/warden/hostels" className={linkClass} onClick={onToggle}>
+                    <Building className="w-4 h-4 text-slate-600" />
+                    <span className="text-sm">Manage Hostels</span>
+                </NavLink>
+            </nav>
+        );
+    }
+
+    // Default (student) nav
     return (
         <nav className="flex flex-col gap-2">
             <NavLink to="." end className={linkClass} onClick={onToggle}>
