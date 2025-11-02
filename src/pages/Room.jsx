@@ -237,7 +237,8 @@ const Room = () => {
       const body = {
         type: 'HOSTEL_LEAVE',
         studentId,
-        details: { hostelId, roomId: room?.id ?? null },
+        hostelId,
+        details: { roomId: room?.id ?? null },
       };
 
       const res = await fetch(`${REQUEST_BASE}/requests/leave`, {

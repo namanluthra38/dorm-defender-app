@@ -160,7 +160,7 @@ const HostelBooking = () => {
       const body = {
         type: 'HOSTEL_JOIN',
         studentId,
-        details: { hostelId },
+        hostelId
       };
 
       const res = await fetch(`${REQUEST_BASE}/requests/join`, {
