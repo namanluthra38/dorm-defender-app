@@ -33,6 +33,8 @@ import WardenRooms from "./pages/WardenRooms";
 import WardenRequests from "./pages/WardenRequests";
 import WardenAttendance from "./pages/WardenAttendance";
 import WardenSettings from "./pages/WardenSettings";
+import WardenRoomDetails from "./pages/WardenRoomDetails";
+import WardenStudentDetails from "./pages/WardenStudentDetails";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -111,7 +113,9 @@ const App = () => (
                   }>
                   <Route index element={<WardenDashboard />} />
                   <Route path="students" element={<WardenStudents />} />
+                  <Route path="students/:studentId" element={<WardenStudentDetails />} />
                   <Route path="rooms" element={<WardenRooms />} />
+                  <Route path="rooms/:roomId" element={<WardenRoomDetails />} />
                   <Route path="requests" element={<WardenRequests />} />
                   <Route path="complaints" element={<WardenComplaints />} />
                   <Route path="announcements" element={<WardenAnnouncements />} />
