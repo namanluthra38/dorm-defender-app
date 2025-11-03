@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import wardenApi from '@/api/wardenClient';
 import authClient from '@/api/authClient';
 import { useQueryClient } from '@tanstack/react-query';
+import { REQUEST_BASE, HOSTEL_BASE, STUDENT_BASE } from '@/config';
 
 export const WardenAuthContext = createContext();
 
@@ -36,6 +37,33 @@ export const WardenAuthProvider = ({ children }) => {
             const composite = res.data;
             queryClient.setQueryData(['wardenComposite'], composite);
             try { setWardenComposite(composite); } catch (e) {}
+
+            // Prefetch related lists (requests, rooms, students) for warden's hostel
+            const hostelId = (composite?.hostels && composite.hostels.length > 0) ? composite.hostels[0].id : (composite?.warden?.hostelId || null);
+            if (hostelId) {
+                // fetch in parallel
+                const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` };
+                try {
+                    const [reqRes, roomsRes, studsRes] = await Promise.all([
+                        fetch(`${REQUEST_BASE}/requests/hostel/${encodeURIComponent(hostelId)}`, { headers }),
+                        fetch(`${HOSTEL_BASE}/hostels/rooms/hostel/${encodeURIComponent(hostelId)}`, { headers }),
+                        fetch(`${STUDENT_BASE}/students/hostel/${encodeURIComponent(hostelId)}`, { headers }),
+                    ]);
+
+                    const requests = reqRes.ok ? await reqRes.json() : [];
+                    const rooms = roomsRes.ok ? await roomsRes.json() : [];
+                    const students = studsRes.ok ? await studsRes.json() : [];
+
+                    queryClient.setQueryData(['warden','requests', hostelId], requests);
+                    queryClient.setQueryData(['warden','rooms', hostelId], rooms);
+                    queryClient.setQueryData(['warden','students', hostelId], students);
+                } catch (e) {
+                    // Prefetch is best-effort; don't block login if it fails
+                    console.debug('Prefetch warden lists failed', e?.message ?? e);
+                }
+            }
+
+            try { setUser({ ...minimalUser, role: 'WARDEN' }); } catch (e) {}
             return composite;
         } catch (err) {
             console.debug('fetchWardenComposite failed', err?.response?.status ?? err?.message);

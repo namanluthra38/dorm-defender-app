@@ -27,7 +27,7 @@ const WardenProfile = () => {
     email: wardenObj?.email ?? 'warden@example.com',
     phone: wardenObj?.phone ?? '—',
     employeeId: wardenObj?.employeeId ?? wardenObj?.id ?? '—',
-    assignedHostels: hostels.length,
+    assignedHostel: composite?.hostel.name ?? '—',
     createdAt: formatDate(wardenObj?.createdAt ?? wardenObj?.created_at)
   };
 
@@ -59,19 +59,16 @@ const WardenProfile = () => {
           </div>
 
           <div>
-            <p className="text-sm text-gray-500">Employee ID</p>
-            <p className="font-medium">{profile.employeeId}</p>
-          </div>
-
-          <div>
-            <p className="text-sm text-gray-500">Assigned Hostels</p>
-            <p className="font-medium">{profile.assignedHostels}</p>
-          </div>
-
-          <div>
-            <p className="text-sm text-gray-500">Created</p>
+            <p className="text-sm text-gray-500">Warden Since</p>
             <p className="font-medium">{profile.createdAt}</p>
           </div>
+
+          <div>
+            <p className="text-sm text-gray-500">Assigned Hostel</p>
+            <p className="font-medium">{profile.assignedHostel}</p>
+          </div>
+
+
         </div>
 
         {hostels.length > 0 && (
