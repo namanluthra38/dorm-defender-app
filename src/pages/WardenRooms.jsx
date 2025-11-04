@@ -1,91 +1,20 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Pen } from 'lucide-react';
-import { useWardenAuth } from '@/contexts/WardenAuthContext';
-import useWardenComposite from '@/hooks/useWardenComposite';
-import { HOSTEL_BASE } from '@/config';
-
-const safeGetToken = () => {
-  try { return localStorage.getItem('authToken'); } catch (e) { return null; }
-};
+import useWardenLists from '@/hooks/useWardenLists';
 
 const WardenRooms = () => {
   const navigate = useNavigate();
-  const { user: wardenUser } = useWardenAuth();
-  const { data: composite, isLoading: compositeLoading } = useWardenComposite();
+  const { rooms = [], isLoading } = useWardenLists();
 
-  const [rooms, setRooms] = useState([]);
   const [query, setQuery] = useState('');
   const [minOccupancy, setMinOccupancy] = useState('');
   const [minTotalSeats, setMinTotalSeats] = useState('');
   const [maxTotalSeats, setMaxTotalSeats] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  // derive hostelId (similar to other pages)
-  const hostelId = useMemo(() => {
-    if (composite?.hostels && composite.hostels.length > 0) return composite.hostels[0].id;
-    return (wardenUser?.hostelId ?? null);
-  }, [composite, wardenUser]);
-
-  useEffect(() => {
-    let aborted = false;
-    const controller = new AbortController();
-
-    const loadRooms = async () => {
-      if (!hostelId) {
-        setRooms([]);
-        setError(null);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-
-      const token = safeGetToken();
-      try {
-        const url = `${HOSTEL_BASE}/hostels/rooms/hostel/${encodeURIComponent(hostelId)}`;
-        const res = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          signal: controller.signal,
-        });
-
-        if (aborted) return;
-
-        if (!res.ok) {
-          const txt = await res.text().catch(() => null);
-          setError(`Failed to load rooms: ${res.status} ${txt ?? ''}`);
-          setRooms([]);
-          return;
-        }
-
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : [];
-
-        if (!aborted) setRooms(list);
-      } catch (e) {
-        if (!aborted) setError(e.message ?? String(e));
-      } finally {
-        if (!aborted) setLoading(false);
-      }
-    };
-
-    if (!compositeLoading) loadRooms();
-
-    return () => {
-      aborted = true;
-      controller.abort();
-    };
-  }, [hostelId, compositeLoading]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return rooms.filter(r => {
+    return (Array.isArray(rooms) ? rooms : []).filter(r => {
       // r.filledSeats and r.totalSeats expected from backend
       if (minOccupancy && Number(r.filledSeats) < Number(minOccupancy)) return false;
       if (minTotalSeats && Number(r.totalSeats ?? 0) < Number(minTotalSeats)) return false;
@@ -135,10 +64,8 @@ const WardenRooms = () => {
       </div>
 
       <div className="bg-white border rounded-md p-4">
-        {compositeLoading || loading ? (
+        {isLoading ? (
           <div className="text-sm text-gray-500">Loading rooms…</div>
-        ) : error ? (
-          <div className="text-sm text-rose-600">{error}</div>
         ) : filtered.length === 0 ? (
           <div className="text-sm text-gray-500">No rooms found for your hostel.</div>
         ) : (

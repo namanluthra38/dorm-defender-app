@@ -1,12 +1,34 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import useWardenLists from '@/hooks/useWardenLists';
+import { REQUEST_BASE, STUDENT_BASE, HOSTEL_BASE } from '@/config';
 import { useWardenAuth } from '@/contexts/WardenAuthContext';
-import useWardenComposite from '@/hooks/useWardenComposite';
-import { REQUEST_BASE, STUDENT_BASE } from '@/config';
 
 
 
 const safeGetToken = () => {
   try { return localStorage.getItem('authToken'); } catch (e) { return null; }
+};
+
+// helper: safely extract student id from a request (prefer studentId, then student.id, student.studentId)
+const extractStudentId = (r) => {
+  if (!r) return null;
+  if (r.studentId) return String(r.studentId);
+  const s = r.student;
+  if (!s) return null;
+  if (typeof s === 'string') return s;
+  if (typeof s === 'object') {
+    if (s.id) return String(s.id);
+    if (s.studentId) return String(s.studentId);
+  }
+  return null;
+};
+
+// helper: safely extract hostel id from request details or top-level
+const extractHostelId = (r) => {
+  if (!r) return null;
+  if (r.details && r.details.hostelId) return String(r.details.hostelId);
+  if (r.hostelId) return String(r.hostelId);
+  return null;
 };
 
 const formatDetails = (d) => {
@@ -71,237 +93,132 @@ const mapFriendlyToEnum = (friendly) => {
 };
 
 const WardenRequests = () => {
-  const { user: wardenUser } = useWardenAuth();
-  const { data: composite, isLoading: compositeLoading } = useWardenComposite();
+  const { requests = [], students = [], isLoading } = useWardenLists();
+  const { wardenComposite } = useWardenAuth();
 
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [requests, setRequests] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  // track ids that are currently being updated so UI can disable buttons
+  const [localRequests, setLocalRequests] = useState([]);
+  const [studentCache, setStudentCache] = useState({});
+  const [hostelCache, setHostelCache] = useState({});
   const [updatingIds, setUpdatingIds] = useState(new Set());
 
-  // derive hostelId (memoized)
-  const hostelId = useMemo(() => {
-    if (composite?.hostels && composite.hostels.length > 0) return composite.hostels[0].id;
-    return (wardenUser?.hostelId ?? null);
-  }, [composite, wardenUser]);
-
-  // --- load requests & student names ---
+  // initialize/enrich localRequests from hook data and students/hostels
   useEffect(() => {
-    let aborted = false;
-    const controller = new AbortController();
-    const token = safeGetToken();
+    if (!Array.isArray(requests)) return;
 
-    const loadRequests = async () => {
-      if (!hostelId) {
-        setRequests([]);
-        setError(null);
-        setLoading(false);
-        return;
+    const enriched = requests.map(r => {
+      // studentName preference order: r.studentName, r.student?.name, students list, cache
+      const sid = extractStudentId(r);
+      let studentName = r.studentName || (r.student && typeof r.student === 'object' ? (r.student.name || r.student.fullName || r.student.studentName) : null);
+      if (!studentName && sid) {
+        const found = (Array.isArray(students) ? students : []).find(s => String(s.id) === String(sid));
+        if (found) studentName = found.name || found.fullName || found.studentName;
+        else if (studentCache[String(sid)]) studentName = studentCache[String(sid)];
       }
 
-      setLoading(true);
-      setError(null);
-
-      try {
-        const url = `${REQUEST_BASE}/requests/hostel/${encodeURIComponent(hostelId)}`;
-        const res = await fetch(url, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          signal: controller.signal,
-        });
-
-        if (aborted) return;
-
-        if (!res.ok) {
-          const txt = await res.text().catch(() => null);
-          setError(`Failed to load requests: ${res.status} ${txt ?? ''}`);
-          setRequests([]);
-          return;
-        }
-
-        const data = await res.json();
-        const items = Array.isArray(data) ? data : [];
-
-        // merge any embedded student name from nested object
-        const initial = items.map(r => {
-          let studentName = r.studentName;
-          if (!studentName || typeof studentName !== 'string') {
-            const s = r.student;
-            if (s && typeof s === 'object') studentName = s.name || s.fullName || s.studentName || studentName;
-          }
-          return studentName ? { ...r, studentName } : r;
-        });
-
-        if (aborted) return;
-        setRequests(initial);
-
-        // collect missing student IDs we want names for
-        const ids = Array.from(new Set(initial
-            .map(r => {
-              const hasName = (typeof r.studentName === 'string' && r.studentName.trim() !== '');
-              if (hasName) return null;
-              if (r.studentId) return String(r.studentId);
-              const s = r.student;
-              if (!s) return null;
-              if (typeof s === 'string') return s;
-              if (typeof s === 'object' && (s.id || s.studentId)) return (s.id || s.studentId);
-              return null;
-            })
-            .filter(Boolean)));
-
-        if (ids.length === 0 || aborted) {
-          return;
-        }
-
-        // Try a batch endpoint first: /students?ids=id1,id2 - if your API supports a different batch endpoint, adjust here.
-        // If batch fails, fall back to per-id requests.
-        let namePairs = []; // { id, name }
-
-        try {
-          const batchUrl = `${STUDENT_BASE}/students?ids=${ids.map(encodeURIComponent).join(',')}`;
-          const batchResp = await fetch(batchUrl, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            signal: controller.signal,
-          });
-
-          if (aborted) return;
-
-          if (batchResp.ok) {
-            const list = await batchResp.json();
-            if (Array.isArray(list)) {
-              namePairs = list
-                  .map(s => ({ id: String(s.id || s.studentId || s._id || ''), name: s.name || s.fullName || s.studentName || null }))
-                  .filter(p => p.id && p.name);
-            }
-          } else if (batchResp.status === 401 || batchResp.status === 403) {
-            // permission issue — fall back to per-id fetches below
-            // but keep going silently
-          } else {
-            // other non-ok: try per-id below
-          }
-        } catch (e) {
-          // batch fetch may not be supported or aborted — we'll fall back to per-id below
-        }
-
-        if (namePairs.length === 0) {
-          // fallback: individual attempts (try per-id name endpoint, then try /students list fallback)
-          let studentsListCache = null;
-
-          const fetchNameForId = async (studentId) => {
-            if (!studentId) return null;
-            try {
-              const singleUrl = `${STUDENT_BASE}/students/${encodeURIComponent(studentId)}/name`;
-              const resp = await fetch(singleUrl, {
-                method: 'GET',
-                headers: {
-                  'Content-Type': 'application/json',
-                  ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
-                signal: controller.signal,
-              });
-
-              if (aborted) return null;
-
-              if (resp.ok) {
-                const txt = await resp.text();
-                return txt || null;
-              }
-
-              if (resp.status === 401 || resp.status === 403) {
-                // try list fallback
-                if (!studentsListCache) {
-                  try {
-                    const listRes = await fetch(`${STUDENT_BASE}/students`, {
-                      method: 'GET',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                      },
-                      signal: controller.signal,
-                    });
-                    if (listRes.ok) studentsListCache = await listRes.json();
-                    else studentsListCache = [];
-                  } catch (e) {
-                    studentsListCache = [];
-                  }
-                }
-                const found = (studentsListCache || []).find(s => String(s.id) === String(studentId) || String(s.id) === studentId);
-                if (found) return (found.name || found.fullName || found.studentName || null);
-              }
-
-              return null;
-            } catch (e) {
-              return null;
-            }
-          };
-
-          const pairs = await Promise.all(ids.map(id => fetchNameForId(id).then(name => ({ id, name }))));
-          namePairs = pairs.filter(p => p.name);
-        }
-
-        if (aborted) return;
-
-        if (namePairs.length > 0) {
-          setRequests(prev => prev.map(r => {
-            const sid = r.studentId ? String(r.studentId) : (r.student && typeof r.student === 'string' ? r.student : (r.student && r.student.id ? r.student.id : null));
-            if (!r.studentName && sid) {
-              const found = namePairs.find(p => String(p.id) === String(sid) && p.name);
-              if (found) return { ...r, studentName: found.name };
-            }
-            return r;
-          }));
-        } else {
-          // no names found - do nothing (we already set initial requests)
-        }
-      } catch (e) {
-        if (!aborted) {
-          setError(e.message ?? String(e));
-          setRequests([]);
-        }
-      } finally {
-        if (!aborted) setLoading(false);
+      // hostel name: check request.details.hostelId or r.hostelId
+      const hid = extractHostelId(r);
+      let hostelName = null;
+      if (hid) {
+        const foundH = (wardenComposite?.hostels || []).find(h => String(h.id) === String(hid));
+        if (foundH) hostelName = foundH.name;
+        else if (hostelCache[String(hid)]) hostelName = hostelCache[String(hid)];
       }
-    };
 
-    // only run when composite finished loading (or warden user present)
-    if (!compositeLoading) loadRequests();
+      return { ...r, studentName, hostelName };
+    });
 
-    return () => {
-      aborted = true;
-      controller.abort();
-    };
-  }, [hostelId, compositeLoading]);
+    setLocalRequests(enriched);
 
-  // --- filtered list (memoized) ---
+    // fetch any missing student/hostel names (best-effort, cached)
+    const missingStudentIds = Array.from(new Set(enriched.map(e => extractStudentId(e)).filter(Boolean))).filter(id => !enriched.find(e => String(extractStudentId(e)) === String(id) && e.studentName) && !studentCache[id]);
+    const missingHostelIds = Array.from(new Set(enriched.map(e => extractHostelId(e)).filter(Boolean))).filter(id => !enriched.find(e => String(extractHostelId(e)) === String(id) && e.hostelName) && !hostelCache[id]);
+
+    if (missingStudentIds.length > 0) {
+      missingStudentIds.forEach(id => fetchAndCacheStudentName(id));
+    }
+    if (missingHostelIds.length > 0) {
+      missingHostelIds.forEach(id => fetchAndCacheHostelName(id));
+    }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requests, students, wardenComposite]);
+
+  // fetch and cache functions
+  const fetchAndCacheStudentName = async (id) => {
+    if (!id) return;
+    try {
+      const token = safeGetToken();
+      const res = await fetch(`${STUDENT_BASE}/students/${encodeURIComponent(id)}`, {
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const name = data?.name || data?.fullName || data?.studentName || null;
+      if (name) {
+        setStudentCache(prev => ({ ...prev, [String(id)]: name }));
+        setLocalRequests(prev => prev.map(r => {
+          const sid = extractStudentId(r);
+          if (sid && String(sid) === String(id)) return { ...r, studentName: name };
+          return r;
+        }));
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const fetchAndCacheHostelName = async (id) => {
+    if (!id) return;
+    try {
+      const token = safeGetToken();
+      const res = await fetch(`${HOSTEL_BASE}/hostels/${encodeURIComponent(id)}`, {
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const name = data?.name || data?.hostelName || null;
+      if (name) {
+        setHostelCache(prev => ({ ...prev, [String(id)]: name }));
+        setLocalRequests(prev => prev.map(r => {
+          const hid = extractHostelId(r);
+          if (hid && String(hid) === String(id)) return { ...r, hostelName: name };
+          return r;
+        }));
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const getStudentNameSync = (id) => {
+    if (!id) return 'Unknown';
+    const sid = String(id);
+    if (studentCache && studentCache[sid]) return studentCache[sid];
+    const found = (Array.isArray(students) ? students : []).find(s => String(s.id) === sid);
+    if (found) return found.name || found.fullName || found.studentName || sid;
+    return `(${sid})`;
+  };
+
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return requests.filter(r => {
+     const q = query.trim().toLowerCase();
+    return (localRequests || []).filter(r => {
       if (statusFilter !== 'all' && (String(r.status || '').toLowerCase() !== statusFilter)) return false;
       if (!q) return true;
-      const detailsText = (r.details != null) ? formatDetails(r.details).toLowerCase() : '';
-      const studentText = renderValue(getStudentDisplay(r)).toLowerCase();
-      const hay = (String(r.id) + ' ' + studentText + ' ' + renderValue(r.type) + ' ' + detailsText).toLowerCase();
+      const sid = extractStudentId(r);
+      const studentText = (String(r.studentName || getStudentNameSync(sid))).toLowerCase();
+      const hay = (String(r.id) + ' ' + studentText + ' ' + String(r.status || '') ).toLowerCase();
       return hay.includes(q);
     });
-  }, [requests, query, statusFilter]);
+  }, [localRequests, query, statusFilter]);
 
   // --- update status (optimistic) ---
   const updateStatus = useCallback(async (id, newStatusFriendly) => {
     setUpdatingIds(prev => new Set(prev).add(id));
 
     let prevStatus = null;
-    setRequests(prev => prev.map(r => {
+    setLocalRequests(prev => prev.map(r => {
       if (r.id === id) {
         prevStatus = r.status;
         return { ...r, status: newStatusFriendly };
@@ -311,7 +228,8 @@ const WardenRequests = () => {
 
     const token = safeGetToken();
     const enumStatus = mapFriendlyToEnum(newStatusFriendly);
-    const url = `${REQUEST_BASE}/requests/${encodeURIComponent(id)}/status?status=${encodeURIComponent(enumStatus)}&reviewedBy=${encodeURIComponent(wardenUser?.id ?? wardenUser?.email ?? 'warden')}`;
+    // keep reviewedBy the same as before; since we removed wardenUser usage, use 'warden' as default
+    const url = `${REQUEST_BASE}/requests/${encodeURIComponent(id)}/status?status=${encodeURIComponent(enumStatus)}&reviewedBy=warden`;
 
     try {
       const res = await fetch(url, {
@@ -324,20 +242,18 @@ const WardenRequests = () => {
 
       if (!res.ok) {
         // revert optimistic update
-        setRequests(prev => prev.map(r => r.id === id ? { ...r, status: prevStatus ?? 'PENDING' } : r));
+        setLocalRequests(prev => prev.map(r => r.id === id ? { ...r, status: prevStatus ?? 'PENDING' } : r));
         const txt = await res.text().catch(() => null);
-        // use a friendly UI alert - you can replace with your toast component
         window.alert(`Failed to update status: ${res.status} ${txt ?? ''}`);
         return;
       }
 
       const updated = await res.json().catch(() => null);
       if (updated && updated.id) {
-        // merge server response into existing request so we don't lose locally fetched fields (like studentName)
-        setRequests(prev => prev.map(r => r.id === id ? { ...r, ...updated } : r));
+        setLocalRequests(prev => prev.map(r => r.id === id ? { ...r, ...updated } : r));
       }
     } catch (e) {
-      setRequests(prev => prev.map(r => r.id === id ? { ...r, status: prevStatus ?? 'PENDING' } : r));
+      setLocalRequests(prev => prev.map(r => r.id === id ? { ...r, status: prevStatus ?? 'PENDING' } : r));
       window.alert(`Failed to update status: ${e?.message ?? String(e)}`);
     } finally {
       setUpdatingIds(prev => {
@@ -346,13 +262,12 @@ const WardenRequests = () => {
         return next;
       });
     }
-  }, [wardenUser]);
+  }, []);
 
-  // small helper for button disabled state
   const isUpdating = useCallback((id) => updatingIds.has(id), [updatingIds]);
 
   return (
-      <div>
+       <div>
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-semibold">Requests</h2>
@@ -381,10 +296,8 @@ const WardenRequests = () => {
         </div>
 
         <div className="bg-white border rounded-md p-4">
-          {compositeLoading || loading ? (
+          {isLoading ? (
               <div className="text-sm text-gray-500">Loading requests…</div>
-          ) : error ? (
-              <div className="text-sm text-rose-600">{error}</div>
           ) : filtered.length === 0 ? (
               <div className="text-sm text-gray-500">No requests found for the chosen filter/search.</div>
           ) : (
@@ -392,12 +305,13 @@ const WardenRequests = () => {
                 {filtered.map(r => {
                   const st = String(r.status || '').toLowerCase();
                   const isFinal = ['approved', 'rejected', 'denied'].includes(st);
+                  const sid = extractStudentId(r);
+                  const studentDisplay = r.studentName || getStudentNameSync(sid);
                   return (
                       <li key={r.id} className="flex items-start justify-between">
                         <div>
-                          <p className="font-medium">{renderValue(r.type)} — {renderValue(getStudentDisplay(r))}</p>
-                          <p className="text-xs text-gray-400">{String(r.id)} • {String(r.status)}</p>
-                          <p className="text-sm text-gray-700 mt-2">{formatDetails(r.details)}</p>
+                          <p className="font-medium">{renderValue(r.type)} — {studentDisplay}</p>
+                          <p className="text-xs text-gray-400">{String(r.status)}</p>
                         </div>
                         <div className="flex flex-col items-end gap-2">
                           <div className="text-xs text-gray-500">Actions</div>

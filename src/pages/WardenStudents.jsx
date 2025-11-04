@@ -1,107 +1,26 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { PlusCircle, Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useWardenAuth } from '@/contexts/WardenAuthContext';
-import useWardenComposite from '@/hooks/useWardenComposite';
-import { STUDENT_BASE, HOSTEL_BASE } from '@/config';
-
-const safeGetToken = () => {
-  try { return localStorage.getItem('authToken'); } catch (e) { return null; }
-};
+import useWardenLists from '@/hooks/useWardenLists';
 
 const WardenStudents = () => {
   const navigate = useNavigate();
-  const { user: wardenUser } = useWardenAuth();
-  const { data: composite, isLoading: compositeLoading } = useWardenComposite();
+  const { students = [], rooms = [], isLoading } = useWardenLists();
 
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
 
-  const hostelId = useMemo(() => {
-    if (composite?.hostels && composite.hostels.length > 0) return composite.hostels[0].id;
-    return (wardenUser?.hostelId ?? null);
-  }, [composite, wardenUser]);
-
-  useEffect(() => {
-    let aborted = false;
-    const controller = new AbortController();
-    const token = safeGetToken();
-
-    const load = async () => {
-      if (!hostelId) {
-        setStudents([]);
-        setError(null);
-        setLoading(false);
-        return;
-      }
-      setLoading(true);
-      setError(null);
-      try {
-        const studentsUrl = `${STUDENT_BASE}/students/hostel/${encodeURIComponent(hostelId)}`;
-        const roomsUrl = `${HOSTEL_BASE}/hostels/rooms/hostel/${encodeURIComponent(hostelId)}`;
-
-        // fetch students and rooms in parallel
-        const [sRes, rRes] = await Promise.all([
-          fetch(studentsUrl, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            signal: controller.signal,
-          }),
-          fetch(roomsUrl, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            signal: controller.signal,
-          })
-        ]);
-
-        if (aborted) return;
-
-        if (!sRes.ok) {
-          const txt = await sRes.text().catch(() => null);
-          setError(`Failed to load students: ${sRes.status} ${txt ?? ''}`);
-          setStudents([]);
-          return;
-        }
-
-        if (!rRes.ok) {
-          // rooms failed - we can continue without room numbers but warn
-          console.debug('Failed to load rooms for hostel', hostelId, rRes.status);
-        }
-
-        const studentsData = await sRes.json();
-        const roomsData = rRes.ok ? await rRes.json().catch(() => []) : [];
-
-        // build map roomId -> roomNumber
-        const roomMap = (Array.isArray(roomsData) ? roomsData : []).reduce((acc, room) => {
-          if (room && room.id) acc[String(room.id)] = room.roomNumber ?? room.roomNumber;
-          return acc;
-        }, {});
-
-        const normalized = (Array.isArray(studentsData) ? studentsData : []).map(s => ({
-          ...s,
-          roomNumber: s.roomId ? roomMap[String(s.roomId)] ?? s.roomNumber : s.roomNumber
-        }));
-
-        if (!aborted) setStudents(normalized);
-      } catch (e) {
-        if (!aborted) setError(e.message ?? String(e));
-      } finally {
-        if (!aborted) setLoading(false);
-      }
-    };
-
-    if (!compositeLoading) load();
-    return () => { aborted = true; controller.abort(); };
-  }, [hostelId, compositeLoading]);
+  // normalize students by attaching roomNumber using rooms from the hook
+  const normalizedStudents = useMemo(() => {
+    const roomMap = (Array.isArray(rooms) ? rooms : []).reduce((acc, room) => {
+      if (room && room.id) acc[String(room.id)] = room.roomNumber ?? room.roomNumber;
+      return acc;
+    }, {});
+    return (Array.isArray(students) ? students : []).map(s => ({
+      ...s,
+      roomNumber: s.roomId ? roomMap[String(s.roomId)] ?? s.roomNumber : s.roomNumber
+    }));
+  }, [students, rooms]);
 
   // Debounce the query to avoid frequent re-filtering while user types
   useEffect(() => {
@@ -111,7 +30,7 @@ const WardenStudents = () => {
 
   const filtered = useMemo(() => {
     const q = debouncedQuery.toLowerCase();
-    const list = students.slice();
+    const list = normalizedStudents.slice();
     // sort by roomNumber if present (numeric), else by roomId/string
     list.sort((a, b) => {
       const ar = a.roomId || a.room || '';
@@ -128,7 +47,7 @@ const WardenStudents = () => {
       const hay = `${s.name ?? ''} ${s.uid ?? s.id ?? ''} ${s.roomNumber ?? s.roomId ?? s.room ?? ''}`.toLowerCase();
       return hay.includes(q);
     });
-  }, [students, debouncedQuery]);
+  }, [normalizedStudents, debouncedQuery]);
 
   return (
     <div>
@@ -164,10 +83,8 @@ const WardenStudents = () => {
       </div>
 
       <div className="bg-white border rounded-md p-4">
-        {compositeLoading || loading ? (
+        {isLoading ? (
           <div className="text-sm text-gray-500">Loading students…</div>
-        ) : error ? (
-          <div className="text-sm text-rose-600">{error}</div>
         ) : filtered.length === 0 ? (
           <div className="text-sm text-gray-500">No students found. Try a different search or add a new student.</div>
         ) : (

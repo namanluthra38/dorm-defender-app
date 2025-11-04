@@ -70,9 +70,9 @@ export default function Sidebar({ onToggle }) {
                     <span className="text-sm">Attendance</span>
                 </NavLink>
 
-                <NavLink to="support" className={linkClass} onClick={onToggle}>
+                <NavLink to="complaints" className={linkClass} onClick={onToggle}>
                     <Bell className="w-4 h-4 text-slate-600" />
-                    <span className="text-sm">Support</span>
+                    <span className="text-sm">Complaints</span>
                 </NavLink>
 
                 <div className="border-t my-2" />
@@ -86,11 +86,7 @@ export default function Sidebar({ onToggle }) {
                     <Settings className="w-4 h-4 text-slate-600" />
                     <span className="text-sm">Settings</span>
                 </NavLink>
-
-                <NavLink to="/warden/hostels" className={linkClass} onClick={onToggle}>
-                    <Building className="w-4 h-4 text-slate-600" />
-                    <span className="text-sm">Manage Hostels</span>
-                </NavLink>
+                
             </nav>
         );
     }

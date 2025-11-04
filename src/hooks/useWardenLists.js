@@ -1,5 +1,4 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useWardenAuth } from '@/contexts/WardenAuthContext';
 import useWardenComposite from '@/hooks/useWardenComposite';
 import { REQUEST_BASE, HOSTEL_BASE, STUDENT_BASE } from '@/config';
 
@@ -52,11 +51,19 @@ export default function useWardenLists() {
     staleTime: 1000 * 60,
   });
 
-  const isLoading = compositeLoading || requestsQuery.isLoading || roomsQuery.isLoading || studentsQuery.isLoading;
-  const isError = requestsQuery.isError || roomsQuery.isError || studentsQuery.isError;
+  const complaintsQuery = useQuery({
+    queryKey: ['warden','complaints', hostelId],
+    queryFn: async () => await fetchJson(`${REQUEST_BASE}/complaints/hostel/${encodeURIComponent(hostelId)}`, token),
+    enabled: !!hostelId,
+    initialData: () => queryClient.getQueryData(['warden','complaints', hostelId]) ?? undefined,
+    staleTime: 1000 * 60,
+  });
+
+  const isLoading = compositeLoading || requestsQuery.isLoading || roomsQuery.isLoading || studentsQuery.isLoading || complaintsQuery.isLoading;
+  const isError = requestsQuery.isError || roomsQuery.isError || studentsQuery.isError || complaintsQuery.isError;
 
   const refetchAll = async () => {
-    await Promise.all([requestsQuery.refetch(), roomsQuery.refetch(), studentsQuery.refetch()]);
+    await Promise.all([requestsQuery.refetch(), roomsQuery.refetch(), studentsQuery.refetch(), complaintsQuery.refetch()]);
   };
 
   return {
@@ -64,12 +71,13 @@ export default function useWardenLists() {
     requests: requestsQuery.data ?? [],
     rooms: roomsQuery.data ?? [],
     students: studentsQuery.data ?? [],
+    complaints: complaintsQuery.data ?? [],
     isLoading,
     isError,
     refetchAll,
     requestsQuery,
     roomsQuery,
     studentsQuery,
+    complaintsQuery,
   };
 }
-
