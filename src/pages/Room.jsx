@@ -7,7 +7,7 @@ import useStudentComposite from '@/hooks/useStudentComposite';
 import { useAuth } from '@/contexts/AuthContext';
 import PageContainer from '@/components/layout/PageContainer';
 import { toast } from 'sonner';
-import { REQUEST_BASE } from '@/config';
+import { REQUEST_BASE, STUDENT_BASE } from '@/config';
 
 
 const Room = () => {
@@ -77,7 +77,7 @@ const Room = () => {
           const headers = {};
           if (token) headers['Authorization'] = `Bearer ${token}`;
           try {
-            const res = await fetch(`http://localhost:4000/students/${id}/name`, {
+            const res = await fetch(`${STUDENT_BASE}/students/${id}/name`, {
               method: 'GET',
               headers,
             });

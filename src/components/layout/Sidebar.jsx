@@ -15,7 +15,9 @@ import {
     ClipboardList,
     Calendar
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+
+// don't import useAuth (strict) — read context optionally
+import { AuthContext } from '@/contexts/AuthContext';
 import { WardenAuthContext } from '@/contexts/WardenAuthContext';
 
 /**
@@ -24,8 +26,9 @@ import { WardenAuthContext } from '@/contexts/WardenAuthContext';
  *  - onToggle?: () => void   // optional, used by parent to toggle mobile sidebar
  */
 export default function Sidebar({ onToggle }) {
-    const { user } = useAuth();
-    // try to read warden context if present (do not throw if not inside provider)
+    const studentCtx = useContext(AuthContext);
+    const user = studentCtx?.user ?? null;
+
     const wardenCtx = useContext(WardenAuthContext);
     const wardenUser = wardenCtx?.user ?? null;
 
@@ -86,7 +89,6 @@ export default function Sidebar({ onToggle }) {
                     <Settings className="w-4 h-4 text-slate-600" />
                     <span className="text-sm">Settings</span>
                 </NavLink>
-                
             </nav>
         );
     }

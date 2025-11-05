@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { HOSTEL_BASE, REQUEST_BASE, STUDENT_BASE } from '@/config';
 
 // Simple hostel booking page: lists hostels and allows making a "Request Allocation"
 const HostelBooking = () => {
@@ -16,11 +17,6 @@ const HostelBooking = () => {
   // Student-specific state
   const [student, setStudent] = useState(studentComposite?.student ?? null);
   const [loadingStudent, setLoadingStudent] = useState(false);
-
-  // Default service bases — adjust if your services run on different ports
-  const HOSTEL_BASE = 'http://localhost:4001';
-  const REQUEST_BASE = 'http://localhost:4003';
-  const STUDENT_BASE = 'http://localhost:4000';
 
   // Fetch hostels
   useEffect(() => {

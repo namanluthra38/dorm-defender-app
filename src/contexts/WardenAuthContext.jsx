@@ -3,7 +3,6 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import wardenApi from '@/api/wardenClient';
 import authClient from '@/api/authClient';
 import { useQueryClient } from '@tanstack/react-query';
-import { REQUEST_BASE, HOSTEL_BASE, STUDENT_BASE } from '@/config';
 
 export const WardenAuthContext = createContext();
 
@@ -30,7 +29,6 @@ export const WardenAuthProvider = ({ children }) => {
         const t = maybeToken ?? localStorage.getItem('authToken');
         if (!t) return null;
         try {
-            // ensure wardenApi sends header (interceptor will read localStorage if needed)
             const res = await wardenApi.get('/wardens/me/full', {
                 headers: { Authorization: `Bearer ${t}` }
             });
@@ -38,30 +36,8 @@ export const WardenAuthProvider = ({ children }) => {
             queryClient.setQueryData(['wardenComposite'], composite);
             try { setWardenComposite(composite); } catch (e) {}
 
-            // Prefetch related lists (requests, rooms, students) for warden's hostel
-            const hostelId = (composite?.hostels && composite.hostels.length > 0) ? composite.hostels[0].id : (composite?.warden?.hostelId || null);
-            if (hostelId) {
-                // fetch in parallel
-                const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` };
-                try {
-                    const [reqRes, roomsRes, studsRes] = await Promise.all([
-                        fetch(`${REQUEST_BASE}/requests/hostel/${encodeURIComponent(hostelId)}`, { headers }),
-                        fetch(`${HOSTEL_BASE}/hostels/rooms/hostel/${encodeURIComponent(hostelId)}`, { headers }),
-                        fetch(`${STUDENT_BASE}/students/hostel/${encodeURIComponent(hostelId)}`, { headers }),
-                    ]);
-
-                    const requests = reqRes.ok ? await reqRes.json() : [];
-                    const rooms = roomsRes.ok ? await roomsRes.json() : [];
-                    const students = studsRes.ok ? await studsRes.json() : [];
-
-                    queryClient.setQueryData(['warden','requests', hostelId], requests);
-                    queryClient.setQueryData(['warden','rooms', hostelId], rooms);
-                    queryClient.setQueryData(['warden','students', hostelId], students);
-                } catch (e) {
-                    // Prefetch is best-effort; don't block login if it fails
-                    console.debug('Prefetch warden lists failed', e?.message ?? e);
-                }
-            }
+            // NOTE: Removed prefetching of requests/rooms/students/complaints here.
+            // Let useWardenLists (the hook) own fetching and caching of those lists to avoid duplicate network calls.
 
             try { setUser({ ...minimalUser, role: 'WARDEN' }); } catch (e) {}
             return composite;
@@ -74,7 +50,6 @@ export const WardenAuthProvider = ({ children }) => {
     // login/logout/refresh/setUserRoleSafe definitions
     const login = useCallback(async (email, password) => {
         try {
-            // call auth service using dedicated authClient
             const resp = await authClient.post('/login', { email, password });
             const { token: newToken, user: userPayload } = resp.data;
 
@@ -85,22 +60,20 @@ export const WardenAuthProvider = ({ children }) => {
 
             if (newToken) {
                 localStorage.setItem('authToken', newToken);
-                // set default header for wardenApi so subsequent requests use it
                 wardenApi.defaults.headers.common.Authorization = `Bearer ${newToken}`;
             }
 
             setUser({ ...minimalUser, role: 'WARDEN' });
 
-            // Immediately fetch the warden composite using the new token
             const composite = await fetchAndCacheWardenComposite(newToken);
             if (composite?.warden) {
-                const stud = composite.warden;
-                if (!roleIsWarden(stud)) {
+                const ward = composite.warden;
+                if (!roleIsWarden(ward)) {
                     try { localStorage.removeItem('authToken'); } catch (e) {}
                     setUser(null);
                     return { success: false, message: 'Account is not a warden.' };
                 }
-                setUser({ ...stud, role: 'WARDEN' });
+                setUser({ ...ward, role: 'WARDEN' });
             }
 
             queryClient.invalidateQueries(['wardenComposite']);
@@ -123,12 +96,12 @@ export const WardenAuthProvider = ({ children }) => {
         const t = localStorage.getItem('authToken');
         const composite = await fetchAndCacheWardenComposite(t);
         if (composite?.warden) {
-            const stud = composite.warden;
-            if (!roleIsWarden(stud)) {
+            const ward = composite.warden;
+            if (!roleIsWarden(ward)) {
                 try { localStorage.removeItem('authToken'); } catch (e) {}
                 setUser(null);
             } else {
-                setUser({ ...stud, role: 'WARDEN' });
+                setUser({ ...ward, role: 'WARDEN' });
             }
         }
         return composite;
@@ -140,24 +113,22 @@ export const WardenAuthProvider = ({ children }) => {
         setUser({ ...u, role: 'WARDEN' });
     }, []);
 
-    // On mount: if token exists, hydrate composite (preferred) and set user
     useEffect(() => {
         let mounted = true;
         const run = async () => {
             const t = localStorage.getItem('authToken');
             if (t) {
-                // set default auth header for wardenApi to reduce repeated localStorage reads
                 wardenApi.defaults.headers.common.Authorization = `Bearer ${t}`;
 
                 try {
                     const composite = await fetchAndCacheWardenComposite(t);
                     if (composite?.warden) {
-                        const stud = composite.warden;
-                        if (!roleIsWarden(stud)) {
+                        const ward = composite.warden;
+                        if (!roleIsWarden(ward)) {
                             try { localStorage.removeItem('authToken'); } catch (ex) {}
                             setUser(null);
                         } else {
-                            setUser({ ...stud, role: 'WARDEN' });
+                            setUser({ ...ward, role: 'WARDEN' });
                         }
                     } else {
                         try {

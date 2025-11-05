@@ -10,8 +10,24 @@ export default defineConfig(({ mode }) => ({
     port: 8080,
     // Proxy auth requests to the backend during development to avoid CORS issues
     proxy: {
-      // proxy any request that starts with /auth to http://localhost:4004
+      // proxy auth (and other API gateway paths) to the API gateway during development
       '/auth': {
+        target: 'http://localhost:4004',
+        changeOrigin: true,
+        secure: false,
+      },
+      // you can also proxy other routes if you prefer: '/students', '/hostels', '/requests' -> gateway
+      '/students': {
+        target: 'http://localhost:4004',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/hostels': {
+        target: 'http://localhost:4004',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/requests': {
         target: 'http://localhost:4004',
         changeOrigin: true,
         secure: false,

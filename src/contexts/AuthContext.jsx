@@ -5,7 +5,7 @@ import authClient from '@/api/authClient';
 import { useQueryClient } from '@tanstack/react-query';
 import { AUTH_BASE, STUDENT_BASE } from '@/config';
 
-const AuthContext = createContext();
+export const AuthContext = createContext();
 
 
 export const AuthProvider = ({ children }) => {

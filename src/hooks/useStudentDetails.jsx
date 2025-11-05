@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
+// Base URL comes from centralized config which defaults to API gateway
+import { STUDENT_BASE } from '@/config';
 
 // Cache key for the composite response
 const STUDENT_COMPOSITE_KEY = 'me:composite';
 const compositeCache = new Map(); // key: 'me:composite', value: { student, room, hostel }
-
-// Base URL - keep in sync with AuthContext if changed
-const STUDENT_BASE = 'http://localhost:4000';
 
 async function fetchJson(url, token) {
   try {

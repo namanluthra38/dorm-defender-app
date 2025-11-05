@@ -1,14 +1,19 @@
 // src/components/layout/Topbar.jsx
-import React, {useState, useRef, useEffect} from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import { Bell, ChevronDown, Menu } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import * as WardenCtx from '@/contexts/WardenAuthContext';
 import { useNavigate } from 'react-router-dom';
 
+// optional-context reads
+import { AuthContext } from '@/contexts/AuthContext';
+import { WardenAuthContext } from '@/contexts/WardenAuthContext';
+
 export default function Topbar({ onMenuClick = () => {} }) {
-    const { user: studentUser, logout: studentLogout } = useAuth();
-    // read optional warden context; do not throw if not inside provider
-    const wardenCtx = React.useContext(WardenCtx.WardenAuthContext);
+    // read contexts safely (they may be undefined if provider not mounted)
+    const studentCtx = useContext(AuthContext);
+    const studentUser = studentCtx?.user ?? null;
+    const studentLogout = studentCtx?.logout ?? null;
+
+    const wardenCtx = useContext(WardenAuthContext);
     const wardenUser = wardenCtx?.user ?? null;
     const wardenLogout = wardenCtx?.logout ?? null;
 
@@ -41,6 +46,7 @@ export default function Topbar({ onMenuClick = () => {} }) {
             if (typeof logout === 'function') logout();
         } catch (e) {
             // swallow
+            console.debug('logout failed', e);
         }
         // navigate to the correct login screen
         if (wardenUser) navigate('/login-warden');
