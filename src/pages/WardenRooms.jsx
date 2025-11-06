@@ -42,9 +42,6 @@ const WardenRooms = () => {
               className="bg-transparent outline-none text-sm"
             />
           </div>
-          <button onClick={() => alert('Open edit rooms (not implemented)')} className="flex items-center gap-2 bg-sky-500 text-white px-3 py-2 rounded-md text-sm">
-            <Pen className="w-4 h-4" /> Edit Rooms
-          </button>
         </div>
       </div>
 

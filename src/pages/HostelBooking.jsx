@@ -104,7 +104,7 @@ const HostelBooking = () => {
           const url = `${REQUEST_BASE}/requests/exist?studentId=${encodeURIComponent(studentId)}&hostelId=${encodeURIComponent(h.id)}`;
           const res = await fetch(url, { method: 'GET', headers });
           if (res.status === 200) return [h.id, true];
-          if (res.status === 404) return [h.id, false];
+          if (res.status === 204) return [h.id, false];
           // other codes: treat as no pending but log
           const txt = await res.text().catch(() => null);
           console.warn('Unexpected response checking request existence for', h.id, res.status, txt);

@@ -100,9 +100,6 @@ const StudentProfile = () => {
           </div>
         </div>
 
-        <div className="mt-4 flex gap-2">
-          <button onClick={() => refresh()} className="px-3 py-1 rounded bg-sky-600 text-white text-sm">Refresh</button>
-        </div>
       </div>
     </div>
   );

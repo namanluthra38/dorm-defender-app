@@ -7,8 +7,13 @@ const safeGetToken = () => {
   try { return localStorage.getItem('authToken'); } catch (e) { return null; }
 };
 
+const MAX_FILES = 5;
+const RESIZE_MAX_WIDTH = 600; // px - smaller target to aggressively cut size
+const RESIZE_QUALITY = 0.55; // quality for webp/jpg
+const ALERT_PAYLOAD_BYTES = 400 * 1024; // 400KB threshold
+
 const Complaints = () => {
-  const { studentComposite } = useAuth();
+  const { studentComplaints, token, refreshStudentComplaints } = useAuth();
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -16,60 +21,145 @@ const Complaints = () => {
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [attachmentsInput, setAttachmentsInput] = useState(''); // comma separated
+  const [fileAttachments, setFileAttachments] = useState([]);
+  const [previews, setPreviews] = useState([]);
   const [submitting, setSubmitting] = useState(false);
 
-  const studentId = studentComposite?.student?.id ?? studentComposite?.studentId ?? null;
-
+  // hydrate complaints from auth context
   useEffect(() => {
-    let aborted = false;
-    const load = async () => {
-      if (!studentId) return;
-      setLoading(true); setError(null);
-      try {
-        const token = safeGetToken();
-        const url = `${REQUEST_BASE}/complaints/student/${encodeURIComponent(studentId)}`;
-        const res = await fetch(url, { headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
-        if (!res.ok) {
-          const txt = await res.text().catch(() => null);
-          if (!aborted) setError(`Failed to load complaints: ${res.status} ${txt ?? ''}`);
-          return;
-        }
-        const data = await res.json();
-        if (!aborted) setComplaints(Array.isArray(data) ? data : []);
-      } catch (e) {
-        if (!aborted) setError(e.message ?? String(e));
-      } finally { if (!aborted) setLoading(false); }
-    };
-    load();
-    return () => { aborted = true; };
-  }, [studentId]);
+    setLoading(true);
+    setError(null);
+    try {
+      if (studentComplaints && Array.isArray(studentComplaints)) setComplaints(studentComplaints);
+      else setComplaints([]);
+    } catch (e) {
+      setError(e?.message ?? String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [studentComplaints]);
 
   const openForm = () => {
-    setTitle(''); setDescription(''); setAttachmentsInput(''); setShowForm(true);
+    setTitle(''); setDescription(''); setFileAttachments([]); setShowForm(true);
   };
+
+  // Resize & compress an image File to a JPEG data URL
+  const resizeFileToDataUrl = (file, maxWidth = RESIZE_MAX_WIDTH, quality = RESIZE_QUALITY) => {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          let { width: w, height: h } = img;
+          if (w > maxWidth) {
+            const ratio = maxWidth / w;
+            w = Math.round(w * ratio);
+            h = Math.round(h * ratio);
+          }
+          canvas.width = w;
+          canvas.height = h;
+          ctx.drawImage(img, 0, 0, w, h);
+          // Prefer WebP for better compression; fallbacks to jpeg if not supported
+          const mime = 'image/webp';
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              URL.revokeObjectURL(url);
+              return reject(new Error('Compression failed'));
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+              URL.revokeObjectURL(url);
+              resolve(reader.result);
+            };
+            reader.onerror = (err) => { URL.revokeObjectURL(url); reject(err); };
+            reader.readAsDataURL(blob);
+          }, mime, quality);
+        } catch (err) {
+          URL.revokeObjectURL(url);
+          reject(err);
+        }
+      };
+      img.onerror = (err) => { URL.revokeObjectURL(url); reject(err); };
+      img.src = url;
+    });
+  };
+
+  const onFileChange = (e) => {
+    const files = Array.from(e.target.files || [])
+      .filter(f => f && f.type && f.type.startsWith('image/'))
+      .slice(0, MAX_FILES);
+    setFileAttachments(files);
+  };
+
+  // manage previews and revoke old object URLs
+  useEffect(() => {
+    // revoke previous
+    previews.forEach(u => { try { URL.revokeObjectURL(u); } catch (e) {} });
+    const urls = fileAttachments.map(f => URL.createObjectURL(f));
+    setPreviews(urls);
+    return () => { urls.forEach(u => { try { URL.revokeObjectURL(u); } catch (e) {} }); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fileAttachments]);
+
+  const removeFileAt = (idx) => setFileAttachments(prev => prev.filter((_, i) => i !== idx));
 
   const submit = async (e) => {
     e?.preventDefault();
     if (submitting) return;
     if (!title || !description) { alert('Title and description are required'); return; }
+
     setSubmitting(true);
     try {
-      const token = safeGetToken();
-      const attachments = attachmentsInput.split(',').map(s => s.trim()).filter(Boolean);
+      const tokenToUse = token ?? safeGetToken();
+
+      let attachments = [];
+      if (fileAttachments && fileAttachments.length > 0) {
+        // compress/resize each file
+        const converted = [];
+        for (const f of fileAttachments) {
+          try {
+            const dataUrl = await resizeFileToDataUrl(f);
+            converted.push(dataUrl);
+          } catch (err) {
+            console.warn('Failed to process image', f.name, err);
+          }
+        }
+        attachments = converted;
+      }
+
+      // Log sizes and optionally warn user if still large
+      try {
+        const sizes = attachments.map(a => (typeof a === 'string' ? a.length : 0));
+        const total = sizes.reduce((s, v) => s + v, 0);
+        console.info('Generated attachment sizes (chars):', sizes, 'total:', total);
+        // approximate bytes from base64 chars (1 char ~1 byte in JS string) / maybe slightly different
+        if (total > ALERT_PAYLOAD_BYTES) {
+          const kb = Math.round(total / 1024);
+          if (!confirm(`Total attachments payload is ~${kb} KB after compression. Continue sending?`)) {
+            setSubmitting(false);
+            return;
+          }
+        }
+      } catch (e) { /* ignore logging errors */ }
+
       const body = { title, description, attachments };
       const res = await fetch(`${REQUEST_BASE}/complaints`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        headers: { 'Content-Type': 'application/json', ...(tokenToUse ? { Authorization: `Bearer ${tokenToUse}` } : {}) },
         body: JSON.stringify(body),
       });
+
       if (!res.ok) {
         const txt = await res.text().catch(() => null);
-        throw new Error(txt || `Failed to create complaint: ${res.status}`);
+        alert('Failed to create complaint: ' + (txt || res.status));
+        setSubmitting(false);
+        return;
       }
+
       const created = await res.json();
-      // prepend to list
-      setComplaints(prev => [created, ...prev]);
+      try { await refreshStudentComplaints(); } catch (e) { setComplaints(prev => [created, ...prev]); }
       setShowForm(false);
     } catch (err) {
       alert('Failed to create complaint: ' + (err?.message ?? String(err)));
@@ -125,9 +215,20 @@ const Complaints = () => {
               <label className="text-sm font-medium">Description</label>
               <textarea value={description} onChange={e => setDescription(e.target.value)} className="w-full border rounded px-3 py-2 mt-1" rows={6} maxLength={4000} required />
             </div>
-            <div className="mb-4">
-              <label className="text-sm font-medium">Attachments (comma-separated URLs)</label>
-              <input value={attachmentsInput} onChange={e => setAttachmentsInput(e.target.value)} className="w-full border rounded px-3 py-2 mt-1" placeholder="https://... , https://..." />
+            <div className="mb-3">
+              <label className="text-sm font-medium">Attach images from device</label>
+              <input type="file" accept="image/*" multiple onChange={onFileChange} className="w-full mt-1" />
+              {fileAttachments && fileAttachments.length > 0 && (
+                <div className="mt-2 flex gap-2 overflow-auto">
+                  {fileAttachments.map((f, idx) => (
+                    <div key={idx} className="relative w-20 h-20 rounded overflow-hidden border">
+                      <button type="button" onClick={() => removeFileAt(idx)} className="absolute top-0 right-0 z-10 bg-white/80 rounded-bl px-1 text-xs">✕</button>
+                      <img src={previews[idx]} alt={f.name} className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-gray-400 mt-1">You can attach images from your device; images will be resized & compressed before upload to reduce size.</p>
             </div>
             <div className="flex items-center justify-end gap-3">
               <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 border rounded">Cancel</button>

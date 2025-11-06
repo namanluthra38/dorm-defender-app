@@ -76,9 +76,6 @@ const WardenStudents = () => {
               </button>
             ) : null}
           </div>
-          <button className="flex items-center gap-2 bg-emerald-600 text-white px-3 py-2 rounded-md text-sm" onClick={() => navigate('students/new')}>
-            <PlusCircle className="w-4 h-4" /> Add Student
-          </button>
         </div>
       </div>
 

@@ -4,6 +4,7 @@ import studentApi from '@/api/studentClient';
 import authClient from '@/api/authClient';
 import { useQueryClient } from '@tanstack/react-query';
 import { AUTH_BASE, STUDENT_BASE } from '@/config';
+import { REQUEST_BASE } from '@/config';
 
 export const AuthContext = createContext();
 
@@ -13,6 +14,7 @@ export const AuthProvider = ({ children }) => {
     const [isInitializing, setIsInitializing] = useState(true);
     const queryClient = useQueryClient();
     const [studentComposite, setStudentComposite] = useState(null);
+    const [studentComplaints, setStudentComplaints] = useState(null);
 
 
     const token = (() => {
@@ -28,6 +30,25 @@ export const AuthProvider = ({ children }) => {
         } catch (e) { return false; }
     };
 
+    const fetchAndCacheStudentComplaints = useCallback(async (maybeToken, studentId) => {
+        const t = maybeToken ?? localStorage.getItem('authToken');
+        if (!t || !studentId) return null;
+        try {
+            const res = await fetch(`${REQUEST_BASE}/complaints/student/${encodeURIComponent(studentId)}`, {
+                headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' }
+            });
+            if (!res.ok) throw new Error(`Failed to fetch complaints: ${res.status}`);
+            const data = await res.json();
+            // cache in react-query and local state for reactivity
+            queryClient.setQueryData(['student','complaints', studentId], data);
+            try { setStudentComplaints(data); } catch (e) {}
+            return data;
+        } catch (err) {
+            console.debug('fetchStudentComplaints failed', err?.response?.status ?? err?.message);
+            return null;
+        }
+    }, [queryClient]);
+
     // Fetch composite from student service and cache it in react-query
     const fetchAndCacheStudentComposite = useCallback(async (maybeToken) => {
         const t = maybeToken ?? localStorage.getItem('authToken');
@@ -40,6 +61,10 @@ export const AuthProvider = ({ children }) => {
             const composite = res.data;
             queryClient.setQueryData(['studentComposite'], composite);
             try { setStudentComposite(composite); } catch (e) {}
+            // also fetch complaints for this student and cache
+            if (composite?.student?.id) {
+                try { await fetchAndCacheStudentComplaints(t, composite.student.id); } catch (e) {}
+            }
             return composite;
         } catch (err) {
             console.debug('fetchStudentComposite failed', err?.response?.status ?? err?.message);
@@ -77,6 +102,8 @@ export const AuthProvider = ({ children }) => {
                     return { success: false, message: 'Account is not a student.' };
                 }
                 setUser({ ...stud, role: 'STUDENT' });
+                // fetch complaints after login
+                try { await fetchAndCacheStudentComplaints(newToken, stud.id); } catch (e) {}
             }
 
             queryClient.invalidateQueries(['studentComposite']);
@@ -93,6 +120,8 @@ export const AuthProvider = ({ children }) => {
         try { delete studentApi.defaults.headers.common.Authorization; } catch (e) {}
         setUser(null);
         queryClient.removeQueries(['studentComposite']);
+        queryClient.removeQueries(['student','complaints']);
+        try { setStudentComplaints(null); } catch (e) {}
     }, [queryClient]);
 
     const refreshStudentComposite = useCallback(async () => {
@@ -105,10 +134,18 @@ export const AuthProvider = ({ children }) => {
                 setUser(null);
             } else {
                 setUser({ ...stud, role: 'STUDENT' });
+                try { await fetchAndCacheStudentComplaints(t, stud.id); } catch (e) {}
             }
         }
         return composite;
     }, [fetchAndCacheStudentComposite]);
+
+    const refreshStudentComplaints = useCallback(async () => {
+        const t = localStorage.getItem('authToken');
+        const sid = (queryClient.getQueryData(['studentComposite'])?.student?.id) ?? (studentComposite?.student?.id) ?? null;
+        if (!sid) return null;
+        return await fetchAndCacheStudentComplaints(t, sid);
+    }, [fetchAndCacheStudentComplaints, queryClient, studentComposite]);
 
     const setUserRoleSafe = useCallback((u) => {
         if (!u) return;
@@ -134,6 +171,8 @@ export const AuthProvider = ({ children }) => {
                             setUser(null);
                         } else {
                             setUser({ ...stud, role: 'STUDENT' });
+                            // fetch student's complaints during init as well
+                            try { await fetchAndCacheStudentComplaints(t, stud.id); } catch (e) {}
                         }
                     } else {
                         try {
@@ -146,6 +185,10 @@ export const AuthProvider = ({ children }) => {
                                 setUser(null);
                             } else {
                                 setUser({ ...minimal, role: 'STUDENT' });
+                                // fetch complaints for the minimal user as well (if id present)
+                                if (minimal?.id) {
+                                    try { await fetchAndCacheStudentComplaints(t, minimal.id); } catch (e) {}
+                                }
                             }
                         } catch (e) {
                             console.debug('auth/me failed during init:', e?.response?.status ?? e?.message);
@@ -171,11 +214,13 @@ export const AuthProvider = ({ children }) => {
             user,
             token,
             studentComposite,
+            studentComplaints,
             setUser: setUserRoleSafe,
             isInitializing,
             login,
             logout,
             refreshStudentComposite
+            ,refreshStudentComplaints
         }}>
             {children}
         </AuthContext.Provider>

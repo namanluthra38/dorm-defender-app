@@ -138,7 +138,7 @@ const Room = () => {
         if (cancelled) return;
         if (res.ok) {
           setLeaveExists(true);
-        } else if (res.status === 404) {
+        } else if (res.status === 204) {
           setLeaveExists(false);
         } else {
           // for other errors, treat as no existing request but log for debugging
@@ -164,7 +164,7 @@ const Room = () => {
         <div>
           <div className="mb-4">
             <h2 className="text-2xl font-semibold">Room Details</h2>
-            <p className="text-sm text-gray-500">Your current assigned room and facilities</p>
+            <p className="text-sm text-gray-500">Your current assigned room</p>
           </div>
           <div className="bg-white border rounded-md p-6">Loading room details…</div>
         </div>
@@ -178,7 +178,7 @@ const Room = () => {
         <div>
           <div className="mb-4">
             <h2 className="text-2xl font-semibold">Room Details</h2>
-            <p className="text-sm text-gray-500">Your current assigned room and facilities</p>
+            <p className="text-sm text-gray-500">Your current assigned room </p>
           </div>
 
           <div className="bg-white border rounded-md p-4">
@@ -212,7 +212,6 @@ const Room = () => {
     roommateDisplay = roommateNames.join(", ");
   }
 
-  const facilities = room.facilities ?? room.amenities ?? [];
 
   const handleLeaveRequest = async () => {
     // prefer token from auth context, fallback to localStorage
@@ -271,7 +270,7 @@ const Room = () => {
       <div>
         <div className="mb-4">
           <h2 className="text-2xl font-semibold">Room Details</h2>
-          <p className="text-sm text-gray-500">Your current assigned room and facilities</p>
+          <p className="text-sm text-gray-500">Your current assigned room</p>
         </div>
 
         <div className="bg-white border rounded-md p-4">
@@ -316,19 +315,9 @@ const Room = () => {
                 </ul>
               )}
             </div>
-            <div>
-              <p className="text-sm text-gray-500">Facilities</p>
-              <p className="font-medium">{facilities.length ? facilities.join(', ') : '—'}</p>
-            </div>
           </div>
 
-          {student && (
-            <div className="mt-4 text-sm text-gray-500">
-              <div>Assigned to: <span className="font-medium">{student.name ?? student.email ?? student.id}</span></div>
-              {student.rollNumber && <div>Roll number: <span className="font-medium">{student.rollNumber}</span></div>}
-              {student.phone && <div>Phone: <span className="font-medium">{student.phone}</span></div>}
-            </div>
-          )}
+
           {/* Leave Hostel button */}
           <div className="mt-4 flex justify-end">
             <button

@@ -21,9 +21,8 @@ const Login = () => {
     useEffect(() => {
         if (user && user.role === 'WARDEN') {
             (async () => {
-                let composite = null;
                 try {
-                    composite = await refreshUserComposite();
+                    await refreshUserComposite();
                 } catch (e) { /* ignore */ }
 
             })();
@@ -45,12 +44,7 @@ const Login = () => {
             if (result.success) {
                 toast.success('Welcome!');
                 // fetch composite to decide routing
-                let composite = null;
-                try {
-                    composite = await refreshUserComposite();
-                } catch (err) {
-                    // ignore and continue
-                }
+                try { await refreshUserComposite(); } catch (err) { /* ignore */ }
                 navigate('/warden');
 
             } else {
@@ -90,6 +84,9 @@ const Login = () => {
                 <CardContent>
                     <div className="w-full mt-6">
                         <LoginForm />
+                        <div className="mt-3 text-center">
+                            <a href="./login" className="text-sm text-gray-700 hover:underline">Login as student</a>
+                        </div>
                     </div>
                 </CardContent>
             </Card>

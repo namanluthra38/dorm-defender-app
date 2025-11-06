@@ -149,6 +149,7 @@ export default function App() {
                                 <Route path="settings" element={<WardenSettings />} />
                             </Route>
 
+
                             {/* catch-all */}
                             <Route path="*" element={<NotFound />} />
                         </Routes>
