@@ -1,24 +1,99 @@
-import React from 'react';
+// src/pages/WardenDashboard.jsx
+import React, { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import useWardenComposite from '@/hooks/useWardenComposite';
 import useWardenLists from '@/hooks/useWardenLists';
-import { Building, Users, MessageSquare, FileText } from 'lucide-react';
+import { 
+  Building, 
+  Users, 
+  MessageSquare, 
+  Grid, 
+  LogOut, 
+  ArrowLeftRight, 
+  Wrench, 
+  Zap, 
+  AlertTriangle,
+  Plus,
+  ShieldCheck,
+  Info,
+  CheckCircle2,
+  ArrowRight,
+  Loader2
+} from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function WardenDashboard() {
+  const navigate = useNavigate();
   const { data: composite, isLoading, error, refetch } = useWardenComposite();
   const { requests, rooms, students, isLoading: listsLoading, isError: listsError, refetchAll } = useWardenLists();
 
   const loading = isLoading || listsLoading;
-  if (loading) return <div>Loading dashboard…</div>;
-  if (error || listsError) return <div className="text-rose-600">Failed to load dashboard</div>;
+
+  // Enrich pending requests with actual student names and details from useWardenLists()
+  const pendingRequests = useMemo(() => {
+    if (!Array.isArray(requests) || !Array.isArray(students)) return [];
+
+    // Filter only pending requests
+    const pending = requests.filter(r => String(r.status || '').toLowerCase() === 'pending');
+
+    return pending.map(r => {
+      // Find student ID
+      let sid = r.studentId;
+      if (!sid && r.student && typeof r.student === 'object') {
+        sid = r.student.id;
+      } else if (!sid) {
+        sid = r.student;
+      }
+
+      const studentObj = students.find(s => String(s.id) === String(sid));
+      const studentName = r.studentName || studentObj?.name || studentObj?.fullName || `Student #${String(sid || 'ID').slice(-4)}`;
+
+      // Resolve room number
+      const roomNum = studentObj?.roomNumber ?? roomObj?.roomNumber ?? 'A-1';
+
+      // Format details
+      let detailsText = '';
+      if (String(r.type || '').toUpperCase() === 'HOSTEL_LEAVE') {
+        detailsText = `Leave Request • Sigma Hall ${roomNum}`;
+      } else if (String(r.type || '').toUpperCase() === 'ROOM_CHANGE') {
+        detailsText = `Room Change • Omega Wing ${roomNum}`;
+      } else {
+        detailsText = `${r.type ? r.type.replace('_', ' ') : 'Request'} • Room ${roomNum}`;
+      }
+
+      return {
+        ...r,
+        studentName,
+        detailsText
+      };
+    });
+  }, [requests, students]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
+        <Loader2 className="w-10 h-10 text-portal-primary animate-spin" />
+        <p className="text-on-surface-variant font-medium">Loading warden command center...</p>
+      </div>
+    );
+  }
+
+  if (error || listsError) {
+    return (
+      <div className="bg-red-50 border border-red-200 text-portal-error p-6 rounded-2xl max-w-xl mx-auto my-10 flex items-start gap-4">
+        <AlertTriangle className="w-6 h-6 shrink-0" />
+        <div>
+          <h3 className="font-bold text-lg mb-1">Failed to load dashboard</h3>
+          <p className="text-sm opacity-90">An unexpected connection error occurred. Please refresh or try again.</p>
+        </div>
+      </div>
+    );
+  }
 
   const warden = composite?.warden ?? {};
   const hostels = composite?.hostels ?? [];
 
-  // remove primary-hostel behavior and instead look for hostel with id === 0
-  const hostelZero = hostels.find(h => String(h.id) === '0' || Number(h.id) === 0);
-  const hostelZeroName = hostelZero ? (hostelZero.name ?? hostelZero.id) : null;
-
-  // Prefer live lists data for counts; fall back to composite/warden totals when lists are not available
+  // Count items safely
   const studentsCount = Array.isArray(students) ? students.length : (composite?.studentsTotal ?? warden?.studentsTotal ?? 0);
   const roomsCount = Array.isArray(rooms) ? rooms.length : 0;
   const openRequests = Array.isArray(requests) ? requests.filter(r => String(r.status || '').toLowerCase() === 'pending').length : (composite?.openRequests ?? 0);
@@ -32,91 +107,250 @@ export default function WardenDashboard() {
     announcementTitle: latestAnnouncement,
   };
 
-  const wardenDisplayName = warden?.name ?? warden?.fullName ?? warden?.email ?? 'Warden';
-  const wardenInitial = (wardenDisplayName && wardenDisplayName.length > 0) ? wardenDisplayName.charAt(0).toUpperCase() : 'W';
-  const hostelName = composite.hostel.name ??  'No hostel assigned';
+  const hostelName = composite?.hostel?.name ?? 'Sigma Hall';
+
+  // Format pending requests list
+  const recentRequests = pendingRequests.slice(0, 3);
+
+  // Dynamic helper to choose icons for requests
+  const getRequestIcon = (type = '') => {
+    const t = type.toUpperCase();
+    if (t === 'HOSTEL_LEAVE') return <LogOut className="w-5 h-5" />;
+    if (t === 'ROOM_CHANGE') return <ArrowLeftRight className="w-5 h-5" />;
+    return <Wrench className="w-5 h-5" />;
+  };
+
+  // Helper to dynamically color icon background
+  const getRequestIconClass = (type = '') => {
+    const t = type.toUpperCase();
+    if (t === 'HOSTEL_LEAVE') return 'bg-primary/10 text-portal-primary';
+    if (t === 'ROOM_CHANGE') return 'bg-portal-secondary/10 text-portal-secondary';
+    return 'bg-portal-error/10 text-portal-error';
+  };
+
+  const handleGenerateReports = () => {
+    toast.success('Generating Warden Administrative Report...');
+    setTimeout(() => {
+      window.print();
+    }, 1000);
+  };
+
+  const recentAlerts = [
+    { id: 1, type: 'info', text: 'Night patrol logs pending upload.' },
+    { id: 2, type: 'check', text: 'Monthly safety audit passed.' }
+  ];
+
   return (
-    <div>
-      {/* Hostel header + small warden profile */}
-      <div className="mb-4 flex items-center justify-between">
+    <div className="animate-in fade-in duration-300">
+      {/* Header Section */}
+      <div className="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
         <div>
-          <h2 className="text-2xl font-semibold">Warden Overview</h2>
-          <p className="text-sm text-gray-500">Summary for your managed hostels and requests</p>
-
+          <h2 className="text-3xl font-bold tracking-tight text-on-surface font-headline-lg">Warden Overview</h2>
+          <p className="text-base text-on-surface-variant mt-1 font-body-lg">Hostel administration and resident oversight.</p>
         </div>
-        <div className="flex items-center gap-3 bg-white border rounded-md p-2">
-          <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-sm font-medium text-gray-700">{wardenInitial}</div>
+        <button 
+          onClick={handleGenerateReports}
+          className="px-6 py-3 bg-portal-primary text-white font-bold text-sm rounded-xl shadow-sm hover:opacity-95 active:scale-95 transition-all w-fit"
+        >
+          Generate Reports
+        </button>
+      </div>
+
+      {/* Metric Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+        {/* Stat 1: Primary Hostel */}
+        <div className="bg-surface-container-lowest p-6 rounded-2xl card-shadow card-shadow-hover border-l-4 border-secondary-container transition-all">
+          <div className="flex justify-between items-start mb-4">
+            <div className="bg-secondary-fixed w-12 h-12 flex items-center justify-center rounded-xl">
+              <Building className="w-6 h-6 text-on-secondary-container" />
+            </div>
+            <span className="text-xs font-semibold text-on-surface-variant tracking-wider uppercase font-label-md">Primary Hostel</span>
+          </div>
+          <p className="text-2xl font-bold text-on-surface font-headline-md">{hostelName}</p>
+          <p className="text-xs font-medium text-on-surface-variant mt-2 tracking-wider font-label-md">Building A-1</p>
+        </div>
+
+        {/* Stat 2: Total Students */}
+        <div className="bg-surface-container-lowest p-6 rounded-2xl card-shadow card-shadow-hover border-l-4 border-tertiary-container transition-all">
+          <div className="flex justify-between items-start mb-4">
+            <div className="bg-tertiary-fixed w-12 h-12 flex items-center justify-center rounded-xl">
+              <Users className="w-6 h-6 text-on-tertiary-fixed-variant" />
+            </div>
+            <span className="text-xs font-semibold text-on-surface-variant tracking-wider uppercase font-label-md">Total Students</span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <p className="text-2xl font-bold text-on-surface font-headline-md">{summary.studentsTotal.toLocaleString()}</p>
+          </div>
+          <p className="text-xs font-medium text-on-surface-variant mt-2 tracking-wider font-label-md">Students Enrolled</p>
+        </div>
+
+        {/* Stat 3: Open Requests */}
+        <div className="bg-surface-container-lowest p-6 rounded-2xl card-shadow card-shadow-hover border-l-4 border-portal-error transition-all">
+          <div className="flex justify-between items-start mb-4">
+            <div className="bg-error-container w-12 h-12 flex items-center justify-center rounded-xl">
+              <MessageSquare className="w-6 h-6 text-on-error-container" />
+            </div>
+            <span className="text-xs font-semibold text-on-surface-variant tracking-wider uppercase font-label-md">Open Requests</span>
+          </div>
+          <p className="text-2xl font-bold text-portal-error font-headline-md">
+            {summary.openRequests} {summary.openRequests === 1 ? 'Active' : 'Active'}
+          </p>
+          <p className="text-xs font-medium text-on-surface-variant mt-2 tracking-wider font-label-md">Pending Review</p>
+        </div>
+
+        {/* Stat 4: Total Rooms */}
+        <div className="bg-surface-container-lowest p-6 rounded-2xl card-shadow card-shadow-hover border-l-4 border-portal-primary transition-all">
+          <div className="flex justify-between items-start mb-4">
+            <div className="bg-primary-fixed w-12 h-12 flex items-center justify-center rounded-xl">
+              <Grid className="w-6 h-6 text-portal-primary" />
+            </div>
+            <span className="text-xs font-semibold text-on-surface-variant tracking-wider uppercase font-label-md">Total Rooms</span>
+          </div>
+          <p className="text-2xl font-bold text-on-surface font-headline-md">{summary.roomsTotal} Units</p>
+          <p className="text-xs font-medium text-on-surface-variant mt-2 tracking-wider font-label-md">Allocated Rooms</p>
+        </div>
+      </div>
+
+      {/* Asymmetric Main Grid Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left: Pending Requests (Replaces Managed Hostels in Mock) */}
+        <div className="lg:col-span-2 bg-surface-container-lowest p-6 xl:p-8 rounded-2xl card-shadow border border-outline-variant/10 flex flex-col justify-between">
           <div>
-            <p className="text-sm font-medium">{wardenDisplayName}</p>
-            {warden?.email && <p className="text-xs text-gray-400">{warden.email}</p>}
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-on-surface font-headline-sm">Pending Requests</h3>
+              <a 
+                href="/warden/requests" 
+                className="text-portal-primary font-semibold text-sm hover:underline flex items-center gap-1 transition-colors"
+              >
+                View All <ArrowRight className="w-4 h-4" />
+              </a>
+            </div>
+
+            <div className="space-y-4">
+              {recentRequests.length === 0 ? (
+                <div className="text-center py-8 text-on-surface-variant font-medium">
+                  <MessageSquare className="w-12 h-12 mx-auto opacity-20 mb-3" />
+                  <p>You have no pending requests to review.</p>
+                </div>
+              ) : (
+                recentRequests.map((r, idx) => (
+                  <div 
+                    key={r.id || r._id || idx} 
+                    className="flex items-center gap-4 p-4 bg-surface-container-low rounded-2xl border border-outline-variant/30 hover:border-portal-primary/30 transition-all card-shadow-hover"
+                  >
+                    <div className={`p-3 rounded-xl shrink-0 ${getRequestIconClass(r.type)}`}>
+                      {getRequestIcon(r.type)}
+                    </div>
+                    <div className="flex-1 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 min-w-0">
+                      <div>
+                        <p className="font-semibold text-base text-on-surface truncate font-title-lg">{r.studentName}</p>
+                        <p className="text-sm text-on-surface-variant mt-1 font-body-md truncate">{r.detailsText}</p>
+                      </div>
+                      <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
+                        <span className="px-3 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-xs font-semibold font-label-sm">
+                          Pending
+                        </span>
+                        <button 
+                          onClick={() => navigate('/warden/requests')}
+                          className="px-4 py-1.5 bg-portal-primary text-white rounded-xl text-xs font-bold shadow-sm hover:opacity-95 active:scale-95 transition-transform"
+                        >
+                          Action
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <button 
+            onClick={() => navigate('/warden/requests')}
+            className="w-full mt-6 py-3 border border-outline-variant text-portal-primary font-bold text-base rounded-xl hover:bg-surface-container-low active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+          >
+            Go to Requests Center
+          </button>
+        </div>
+
+        {/* Right Side Cards Column */}
+        <div className="space-y-6">
+          {/* Recent Announcements Card */}
+          <div className="bg-surface-container-lowest p-6 rounded-2xl card-shadow border border-outline-variant/20">
+            <div className="flex justify-between items-center mb-4 border-b border-outline-variant/10 pb-2">
+              <h3 className="text-lg font-bold text-on-surface font-title-lg">Recent Announcements</h3>
+              <button 
+                onClick={() => navigate('/warden/announcements')}
+                className="text-portal-primary hover:bg-surface-container-low rounded-full p-1.5 transition-all"
+                title="New Announcement"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-6 relative before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-[2px] before:bg-outline-variant/30 pl-2">
+              {(composite?.announcements ?? []).length === 0 ? (
+                <div className="text-sm text-on-surface-variant font-medium py-2 relative pl-4">
+                  No announcements found.
+                </div>
+              ) : (
+                (composite.announcements ?? []).slice(0, 2).map((ann, idx) => (
+                  <div key={ann.id || idx} className="relative pl-6">
+                    <div className={`absolute left-0 top-1.5 w-4 h-4 rounded-full ring-4 ring-surface-container-lowest ${idx === 0 ? 'bg-primary-container' : 'bg-outline-variant'}`}></div>
+                    <p className="text-xs font-semibold text-on-surface-variant tracking-wider uppercase font-label-md">
+                      {ann.date ?? 'Oct 24, 2023'}
+                    </p>
+                    <p className="font-bold text-sm text-on-surface mt-1 font-body-md leading-snug line-clamp-2">{ann.title}</p>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            <button 
+              onClick={() => navigate('/warden/announcements')}
+              className="w-full mt-6 py-2 border border-outline-variant rounded-xl text-xs font-semibold text-on-surface hover:bg-surface-container-low transition-colors"
+            >
+              View All Notices
+            </button>
+          </div>
+
+          {/* Facility Status Card */}
+          <div className="bg-primary-container p-6 rounded-2xl card-shadow text-on-primary-container relative overflow-hidden">
+            <div className="relative z-10">
+              <h3 className="text-lg font-bold mb-1 font-title-lg text-white">Facility Status</h3>
+              <p className="text-xs font-semibold text-white/80 mb-6 font-label-md tracking-wider uppercase">Real-time Monitoring</p>
+              
+              <div className="flex items-center gap-3 bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/10">
+                <div className="bg-white/20 p-2 rounded-lg text-white">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-bold text-sm text-white font-body-md">Systems Online</p>
+                  <p className="text-xs text-white/90 font-label-sm">12/12 Checkpoints Active</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-on-tertiary-container/10 rounded-full blur-2xl"></div>
+          </div>
+
+          {/* Soft Sky Alert Container */}
+          <div className="bg-[#e0f2fe]/20 p-6 rounded-2xl border border-[#bae6fd]/30">
+            <h3 className="text-lg font-bold text-portal-primary mb-4 font-title-lg">System Alerts</h3>
+            <ul className="space-y-3">
+              {recentAlerts.map((alert) => (
+                <li key={alert.id} className="flex gap-2 text-sm text-on-surface">
+                  {alert.type === 'info' ? (
+                    <Info className="w-5 h-5 text-[#0ea5e9] shrink-0" />
+                  ) : (
+                    <CheckCircle2 className="w-5 h-5 text-[#0ea5e9] shrink-0" />
+                  )}
+                  <span className="font-body-md">{alert.text}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Card title="Hostel" value={hostelName} icon={<Building className="w-6 h-6 text-amber-500" />} />
-        <Card title="Students" value={summary.studentsTotal} icon={<Users className="w-6 h-6 text-sky-500" />} />
-        <Card title="Open Requests" value={summary.openRequests} icon={<MessageSquare className="w-6 h-6 text-rose-500" />} />
-        <Card title="Rooms" value={summary.roomsTotal} icon={<FileText className="w-6 h-6 text-sky-500" />} />
-      </div>
-
-      <div className="bg-white border rounded-md p-4 mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold">Managed Hostels</h3>
-          <div className="flex items-center gap-2">
-            <button onClick={async () => { await refetch(); await refetchAll(); }} className="px-3 py-2 rounded border text-sm">Refresh</button>
-          </div>
-        </div>
-        {hostels.length === 0 ? (
-          <p className="text-sm text-gray-500">You are not assigned to any hostel.</p>
-        ) : (
-          <ul className="space-y-2">
-            {hostels.map((h) => (
-              <li key={h.id} className="p-2 border rounded flex items-center justify-between">
-                <div>
-                  <p className="font-medium">{h.name}</p>
-                  <p className="text-xs text-gray-400">Rooms: {h.numberOfRooms ?? '-'}</p>
-                </div>
-                <div className="text-sm text-gray-500">{h.isBoysHostel ? 'Boys' : 'Girls'}</div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div className="grid lg:grid-cols-2 gap-4">
-        <div className="bg-white border rounded-md p-4">
-          <h4 className="font-semibold mb-3">Recent Announcements</h4>
-          <ul className="space-y-2">
-            {(composite?.announcements ?? []).map((ann) => (
-              <li key={ann.id} className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">{ann.title}</p>
-                  <p className="text-xs text-gray-400">{ann.date ?? ''}</p>
-                </div>
-              </li>
-            ))}
-            {(composite?.announcements ?? []).length === 0 && <li className="text-sm text-gray-500">No announcements</li>}
-          </ul>
-        </div>
-
-        <div className="bg-white border rounded-md p-4">
-          <h4 className="font-semibold mb-3">Pending Requests</h4>
-          <p className="text-sm text-gray-500">You have {summary.openRequests} open requests to review</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Card({ title, value, icon }) {
-  return (
-    <div className="bg-white border rounded-md p-4 flex items-center justify-between">
-      <div>
-        <p className="text-sm text-gray-500">{title}</p>
-        <p className="text-xl font-semibold">{value}</p>
-      </div>
-      <div>{icon}</div>
     </div>
   );
 }

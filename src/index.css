@@ -114,3 +114,82 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Redesign Card Shadows */
+.card-shadow {
+  box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.05);
+}
+.card-shadow-hover {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.card-shadow-hover:hover {
+  box-shadow: 0px 8px 30px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+/* Subtle Mesh Gradient Background */
+.mesh-background {
+  background-color: #f8f9ff;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(184, 196, 255, 0.1) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(221, 225, 255, 0.15) 0px, transparent 50%);
+}
+
+/* Soft Security Shadow */
+.security-shadow {
+  box-shadow: 0 10px 30px rgba(30, 41, 59, 0.08);
+}
+
+/* Designer Mockup Utility Classes */
+.font-label-sm { font-family: 'Inter', sans-serif; }
+.text-label-sm { font-size: 12px; line-height: 16px; letter-spacing: 0.01em; font-weight: 500; }
+.font-headline-lg { font-family: 'Manrope', sans-serif; }
+.text-headline-lg { font-size: 30px; line-height: 38px; letter-spacing: -0.02em; font-weight: 700; }
+.font-body-lg { font-family: 'Inter', sans-serif; }
+.text-body-lg { font-size: 16px; line-height: 24px; font-weight: 400; }
+.font-headline-md { font-family: 'Manrope', sans-serif; }
+.text-headline-md { font-size: 24px; line-height: 32px; font-weight: 600; }
+.font-label-md { font-family: 'Inter', sans-serif; }
+.text-label-md { font-size: 14px; line-height: 20px; font-weight: 600; }
+.font-body-md { font-family: 'Inter', sans-serif; }
+.text-body-md { font-size: 14px; line-height: 20px; font-weight: 400; }
+
+.p-stack-sm { padding: 0.5rem; }
+.p-stack-md { padding: 1rem; }
+.p-gutter-md { padding: 1.5rem; }
+.p-stack-lg { padding: 2rem; }
+.gap-stack-sm { gap: 0.5rem; }
+.gap-stack-md { gap: 1rem; }
+.gap-stack-lg { gap: 2rem; }
+.py-stack-lg { padding-top: 2rem; padding-bottom: 2rem; }
+.px-gutter-md { padding-left: 1.5rem; padding-right: 1.5rem; }
+.px-margin-lg { padding-left: 2rem; padding-right: 2rem; }
+
+/* Mockup Specific Color & Style Overrides */
+.bg-surface-container-lowest { background-color: #ffffff !important; }
+.bg-surface-container-low { background-color: #eff4ff !important; }
+.bg-surface-container { background-color: #e5eeff !important; }
+.bg-surface-container-high { background-color: #dce9ff !important; }
+.bg-surface-container-highest { background-color: #d3e4fe !important; }
+.border-outline-variant { border-color: #c4c5d5 !important; }
+.text-outline { color: #757684 !important; }
+
+.bg-primary { background-color: #00288e !important; }
+.text-primary { color: #00288e !important; }
+.border-primary { border-color: #00288e !important; }
+.hover\:border-primary:hover { border-color: #00288e !important; }
+.hover\:text-primary:hover { color: #00288e !important; }
+.text-secondary { color: #545f73 !important; }
+.text-on-surface-variant { color: #444653 !important; }
+.text-on-surface { color: #0b1c30 !important; }
+.text-on-primary-fixed-variant { color: #173bab !important; }
+.bg-primary-fixed { background-color: #dde1ff !important; }
+
+.glass-effect {
+  background: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.4) !important;
+}
+
+

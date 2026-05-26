@@ -1,10 +1,11 @@
 import React from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import useWardenComposite from '@/hooks/useWardenComposite';
+import { useWardenAuth } from '@/contexts/WardenAuthContext';
+import { User, Mail, Phone, Calendar, Building, ShieldCheck, HelpCircle, Loader2, Sparkles } from 'lucide-react';
 
 const WardenProfile = () => {
-  const { user } = useAuth();
-  const { data, isLoading: detailsLoading, error: detailsError, refetch } = useWardenComposite();
+  const { user } = useWardenAuth();
+  const { data, isLoading: detailsLoading, error: detailsError } = useWardenComposite();
 
   // Prefer hook data (fresh), fallback to AuthContext user
   const composite = data ?? null;
@@ -16,14 +17,14 @@ const WardenProfile = () => {
     try {
       const dt = typeof d === 'string' ? new Date(d) : d;
       if (Number.isNaN(dt.getTime())) return d;
-      return dt.toLocaleDateString();
+      return dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     } catch (e) {
       return d;
     }
   }
 
   const profile = {
-    name: wardenObj?.name ?? '-',
+    name: wardenObj?.name ?? 'Warden Member',
     email: wardenObj?.email ?? 'warden@example.com',
     phone: wardenObj?.phone ?? '—',
     employeeId: wardenObj?.employeeId ?? wardenObj?.id ?? '—',
@@ -32,68 +33,139 @@ const WardenProfile = () => {
   };
 
   return (
-    <div>
-      <div className="mb-4">
-        <h2 className="text-2xl font-semibold">Profile</h2>
-        <p className="text-sm text-gray-500">Manage your profile information</p>
-      </div>
-
-      <div className="bg-white border rounded-md p-4 max-w-2xl">
-        {detailsLoading && <div className="mb-3 text-sm text-gray-500">Loading warden details…</div>}
-        {detailsError && <div className="mb-3 text-sm text-rose-600">Failed to load warden composite: {detailsError.message}</div>}
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm text-gray-500">Name</p>
-            <p className="font-medium">{profile.name}</p>
-          </div>
-
-          <div>
-            <p className="text-sm text-gray-500">Email</p>
-            <p className="font-medium">{profile.email}</p>
-          </div>
-
-          <div>
-            <p className="text-sm text-gray-500">Phone</p>
-            <p className="font-medium">{profile.phone}</p>
-          </div>
-
-          <div>
-            <p className="text-sm text-gray-500">Warden Since</p>
-            <p className="font-medium">{profile.createdAt}</p>
-          </div>
-
-          <div>
-            <p className="text-sm text-gray-500">Assigned Hostel</p>
-            <p className="font-medium">{profile.assignedHostel}</p>
-          </div>
-
-
+    <div className="max-w-[700px] mx-auto flex flex-col gap-6 animate-in fade-in duration-300">
+      
+      {/* Header section */}
+      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-2 border-b border-outline-variant/30">
+        <div>
+          <h1 className="font-headline-lg text-headline-lg text-on-surface">Warden Profile</h1>
+          <p className="font-body-md text-on-surface-variant text-sm mt-0.5">
+            Manage your academic residency staff credentials and assigned unit sectors.
+          </p>
         </div>
+      </header>
 
-        {hostels.length > 0 && (
-          <div className="mt-4">
-            <h3 className="font-semibold mb-2">Hostels</h3>
-            <ul className="space-y-2">
-              {hostels.map((h) => (
-                <li key={h.id} className="p-2 border rounded">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{h.name}</p>
-                      <p className="text-xs text-gray-400">Rooms: {h.numberOfRooms ?? '-'}</p>
-                    </div>
-                    <div className="text-sm text-gray-500">{h.isBoysHostel ? 'Boys' : 'Girls'}</div>
+      {/* Main Profile Info Card */}
+      <div className="bg-surface-container-lowest security-shadow glass-effect rounded-2xl p-6 border border-outline-variant relative overflow-hidden">
+        
+        {/* Visual design embellishment */}
+        <div className="absolute right-0 top-0 w-28 h-28 bg-portal-primary/5 rounded-full blur-2xl -translate-y-8 translate-x-8 pointer-events-none" />
+
+        {detailsLoading && (
+          <div className="flex flex-col items-center justify-center py-16 gap-3 text-on-surface-variant">
+            <Loader2 className="w-8 h-8 animate-spin text-portal-primary" />
+            <p className="text-sm font-label-md">Loading warden details...</p>
+          </div>
+        )}
+
+        {detailsError && (
+          <div className="mb-4 p-4 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 text-sm font-semibold flex items-center gap-2">
+            <ShieldCheck className="w-5 h-5 shrink-0" />
+            <span>Failed to load warden details: {detailsError.message}</span>
+          </div>
+        )}
+
+        {!detailsLoading && (
+          <div className="space-y-6">
+            
+            {/* Top Staff Identity Header */}
+            <div className="flex flex-col sm:flex-row items-center gap-4 pb-6 border-b border-outline-variant/30 text-center sm:text-left">
+              <div className="w-20 h-20 rounded-full bg-portal-primary/10 border-2 border-portal-primary/20 flex items-center justify-center text-portal-primary shrink-0 shadow-inner">
+                <User className="w-10 h-10" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center justify-center sm:justify-start gap-2">
+                  <h2 className="text-xl font-headline-sm font-bold text-on-surface">{profile.name}</h2>
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                </div>
+                <p className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">Employee ID: {profile.employeeId}</p>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 border border-emerald-100 text-emerald-600 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400 mt-1">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Authorized Administrative Staff</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Profile specifications grid */}
+            <div className="space-y-4">
+              <h3 className="font-bold text-xs uppercase tracking-wider text-on-surface-variant">Profile Specifications</h3>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                
+                {/* Email */}
+                <div className="p-4 rounded-xl border border-outline-variant/60 bg-surface-container-low flex items-start gap-3">
+                  <Mail className="w-4 h-4 text-portal-primary shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Staff Email</span>
+                    <span className="text-sm font-semibold text-on-surface truncate block max-w-[240px] mt-0.5">{profile.email}</span>
                   </div>
-                </li>
-              ))}
-            </ul>
+                </div>
+
+                {/* Phone */}
+                <div className="p-4 rounded-xl border border-outline-variant/60 bg-surface-container-low flex items-start gap-3">
+                  <Phone className="w-4 h-4 text-portal-primary shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Contact Number</span>
+                    <span className="text-sm font-semibold text-on-surface block mt-0.5">{profile.phone}</span>
+                  </div>
+                </div>
+
+                {/* Assigned Hostel */}
+                <div className="p-4 rounded-xl border border-outline-variant/60 bg-surface-container-low flex items-start gap-3">
+                  <Building className="w-4 h-4 text-portal-primary shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Primary Unit Assigned</span>
+                    <span className="text-sm font-semibold text-on-surface block mt-0.5">{profile.assignedHostel}</span>
+                  </div>
+                </div>
+
+                {/* Warden Since */}
+                <div className="p-4 rounded-xl border border-outline-variant/60 bg-surface-container-low flex items-start gap-3">
+                  <Calendar className="w-4 h-4 text-portal-primary shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Warden Since</span>
+                    <span className="text-sm font-semibold text-on-surface block mt-0.5">{profile.createdAt}</span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Sub-Hostels list managed */}
+            {hostels.length > 0 && (
+              <div className="space-y-3 pt-2">
+                <h3 className="font-bold text-xs uppercase tracking-wider text-on-surface-variant">Allocated Managed Sectors ({hostels.length})</h3>
+                <ul className="grid grid-cols-1 gap-3">
+                  {hostels.map((h) => (
+                    <li 
+                      key={h.id} 
+                      className="p-4 border border-outline-variant/60 rounded-xl bg-surface flex items-center justify-between gap-4 transition-all hover:border-portal-primary/20 shadow-sm"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg border text-portal-primary bg-primary-fixed border-outline-variant/40 shrink-0">
+                          <Building className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm text-on-surface leading-snug">{h.name}</p>
+                          <span className="text-[10px] text-on-surface-variant font-medium">Capacity load: {h.numberOfRooms ?? '—'} rooms</span>
+                        </div>
+                      </div>
+                      <span className="text-xs font-semibold text-portal-primary bg-portal-primary/5 border border-portal-primary/10 px-2.5 py-1 rounded-full">
+                        {h.isBoysHostel ? "Boys' Residency" : "Girls' Residency"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
           </div>
         )}
 
       </div>
+
     </div>
   );
 };
 
 export default WardenProfile;
-

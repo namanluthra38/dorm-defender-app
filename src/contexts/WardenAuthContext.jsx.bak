@@ -1,0 +1,223 @@
+// src/contexts/WardenAuthContext.jsx
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import wardenApi from '@/api/wardenClient';
+import authClient from '@/api/authClient';
+import { useQueryClient } from '@tanstack/react-query';
+import { REQUEST_BASE, HOSTEL_BASE, STUDENT_BASE } from '@/config';
+
+export const WardenAuthContext = createContext();
+
+export const WardenAuthProvider = ({ children }) => {
+    const [user, setUser] = useState(null);
+    const [isInitializing, setIsInitializing] = useState(true);
+    const queryClient = useQueryClient();
+    const [wardenComposite, setWardenComposite] = useState(null);
+
+    const token = (() => {
+        try { return localStorage.getItem('authToken'); } catch (e) { return null; }
+    })();
+
+    const roleIsWarden = (u) => {
+        if (!u) return false;
+        try {
+            const r = (u.role || 'WARDEN').toString().trim().toUpperCase();
+            return r === 'WARDEN';
+        } catch (e) { return false; }
+    };
+
+    // Fetch composite from warden service and cache it in react-query
+    const fetchAndCacheWardenComposite = useCallback(async (maybeToken) => {
+        const t = maybeToken ?? localStorage.getItem('authToken');
+        if (!t) return null;
+        try {
+            // ensure wardenApi sends header (interceptor will read localStorage if needed)
+            const res = await wardenApi.get('/wardens/me/full', {
+                headers: { Authorization: `Bearer ${t}` }
+            });
+            const composite = res.data;
+            queryClient.setQueryData(['wardenComposite'], composite);
+            try { setWardenComposite(composite); } catch (e) {}
+
+            // Prefetch related lists (requests, rooms, students) for warden's hostel
+            const hostelId = (composite?.hostels && composite.hostels.length > 0) ? composite.hostels[0].id : (composite?.warden?.hostelId || null);
+            if (hostelId) {
+                // fetch in parallel
+                const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` };
+                try {
+                    const [reqRes, roomsRes, studsRes] = await Promise.all([
+                        fetch(`${REQUEST_BASE}/requests/hostel/${encodeURIComponent(hostelId)}`, { headers }),
+                        fetch(`${HOSTEL_BASE}/hostels/rooms/hostel/${encodeURIComponent(hostelId)}`, { headers }),
+                        fetch(`${STUDENT_BASE}/students/hostel/${encodeURIComponent(hostelId)}`, { headers }),
+                    ]);
+
+                    const requests = reqRes.ok ? await reqRes.json() : [];
+                    const rooms = roomsRes.ok ? await roomsRes.json() : [];
+                    const students = studsRes.ok ? await studsRes.json() : [];
+
+                    queryClient.setQueryData(['warden','requests', hostelId], requests);
+                    queryClient.setQueryData(['warden','rooms', hostelId], rooms);
+                    queryClient.setQueryData(['warden','students', hostelId], students);
+                } catch (e) {
+                    // Prefetch is best-effort; don't block login if it fails
+                    console.log('Prefetch warden lists failed', e?.message ?? e);
+                }
+            }
+
+            // Use composite data (prefer the warden object) to set the current user.
+            try {
+                const minimal = composite?.warden ?? composite;
+                if (minimal) {
+                    setUser({ ...minimal, role: 'WARDEN' });
+                }
+            } catch (e) {
+                console.log('setUser after composite failed', e?.message ?? e);
+            }
+
+            return composite;
+
+        } catch (err) {
+            console.log('fetchWardenComposite failed', err?.response?.status ?? err?.message);
+            return null;
+        }
+    }, [queryClient]);
+
+    // login/logout/refresh/setUserRoleSafe definitions
+    const login = useCallback(async (email, password) => {
+        try {
+            // call auth service using dedicated authClient
+            const resp = await authClient.post('/login', { email, password });
+            const { token: newToken, user: userPayload } = resp.data;
+
+            const minimalUser = userPayload ?? { email: resp.data.email, role: resp.data.role ?? 'WARDEN' };
+            if (!roleIsWarden(minimalUser)) {
+                return { success: false, message: 'Only warden accounts are allowed to log in here.' };
+            }
+
+            if (newToken) {
+                localStorage.setItem('authToken', newToken);
+                // set default header for wardenApi so subsequent requests use it
+                wardenApi.defaults.headers.common.Authorization = `Bearer ${newToken}`;
+            }
+
+            setUser({ ...minimalUser, role: 'WARDEN' });
+
+            // Immediately fetch the warden composite using the new token
+            const composite = await fetchAndCacheWardenComposite(newToken);
+            if (composite?.warden) {
+                const stud = composite.warden;
+                if (!roleIsWarden(stud)) {
+                    try { localStorage.removeItem('authToken'); } catch (e) {}
+                    setUser(null);
+                    return { success: false, message: 'Account is not a warden.' };
+                }
+                setUser({ ...stud, role: 'WARDEN' });
+            }
+
+            queryClient.invalidateQueries(['wardenComposite']);
+
+            return { success: true, user: { ...minimalUser, role: 'WARDEN' } };
+        } catch (err) {
+            const msg = err?.response?.data?.message ?? err.message ?? 'Login failed';
+            return { success: false, message: msg };
+        }
+    }, [fetchAndCacheWardenComposite, queryClient]);
+
+    const logout = useCallback(() => {
+        try { localStorage.removeItem('authToken'); } catch (e) {}
+        try { delete wardenApi.defaults.headers.common.Authorization; } catch (e) {}
+        setUser(null);
+        queryClient.removeQueries(['wardenComposite']);
+    }, [queryClient]);
+
+    const refreshWardenComposite = useCallback(async () => {
+        const t = localStorage.getItem('authToken');
+        const composite = await fetchAndCacheWardenComposite(t);
+        if (composite?.warden) {
+            const stud = composite.warden;
+            if (!roleIsWarden(stud)) {
+                try { localStorage.removeItem('authToken'); } catch (e) {}
+                setUser(null);
+            } else {
+                setUser({ ...stud, role: 'WARDEN' });
+            }
+        }
+        return composite;
+    }, [fetchAndCacheWardenComposite]);
+
+    const setUserRoleSafe = useCallback((u) => {
+        if (!u) return;
+        if (!roleIsWarden(u)) return;
+        setUser({ ...u, role: 'WARDEN' });
+    }, []);
+
+    // On mount: if token exists, hydrate composite (preferred) and set user
+    useEffect(() => {
+        let mounted = true;
+        const run = async () => {
+            const t = localStorage.getItem('authToken');
+            if (t) {
+                // set default auth header for wardenApi to reduce repeated localStorage reads
+                wardenApi.defaults.headers.common.Authorization = `Bearer ${t}`;
+
+                try {
+                    const composite = await fetchAndCacheWardenComposite(t);
+                    if (composite?.warden) {
+                        const stud = composite.warden;
+                        if (!roleIsWarden(stud)) {
+                            try { localStorage.removeItem('authToken'); } catch (ex) {}
+                            setUser(null);
+                        } else {
+                            setUser({ ...stud, role: 'WARDEN' });
+                        }
+                    } else {
+                        try {
+                            const authResp = await wardenApi.get('/wardens/me', {
+                                headers: { Authorization: `Bearer ${t}` }
+                            });
+                            const minimal = authResp.data;
+                            if (!roleIsWarden(minimal)) {
+                                try { localStorage.removeItem('authToken'); } catch (ex) {}
+                                setUser(null);
+                            } else {
+                                setUser({ ...minimal, role: 'WARDEN' });
+                            }
+                        } catch (e) {
+                            console.log('auth/me failed during init:', e?.response?.status ?? e?.message);
+                            try { localStorage.removeItem('authToken'); } catch (ex) {}
+                            setUser(null);
+                        }
+                    }
+                } catch (err) {
+                    console.log('init composite fetch error', err?.message ?? err);
+                    try { localStorage.removeItem('authToken'); } catch (ex) {}
+                    setUser(null);
+                }
+            }
+            if (mounted) setIsInitializing(false);
+        };
+
+        run();
+        return () => { mounted = false; };
+    }, [fetchAndCacheWardenComposite]);
+
+    return (
+        <WardenAuthContext.Provider value={{
+            user,
+            token,
+            wardenComposite,
+            setUser: setUserRoleSafe,
+            isInitializing,
+            login,
+            logout,
+            refreshWardenComposite
+        }}>
+            {children}
+        </WardenAuthContext.Provider>
+    );
+};
+
+export const useWardenAuth = () => {
+    const ctx = useContext(WardenAuthContext);
+    if (!ctx) throw new Error('useWardenAuth must be used within WardenAuthProvider');
+    return ctx;
+};
