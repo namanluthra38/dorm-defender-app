@@ -328,24 +328,28 @@ const WardenRequests = () => {
 
       {/* Bento summary stats grid */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="security-shadow glass-effect rounded-xl p-5 bg-surface-container-lowest border-l-4 border-l-slate-400 border border-outline-variant/70">
-          <p className="text-xs font-label-md uppercase tracking-wider text-on-surface-variant">Total Requests</p>
-          <p className="text-3xl font-headline-lg text-on-surface mt-2">{stats.total}</p>
+        {/* Total Filed */}
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">Total Requests</p>
+          <p className="text-3xl font-bold text-on-surface mt-3">{stats.total}</p>
         </div>
 
-        <div className="security-shadow glass-effect rounded-xl p-5 bg-surface-container-lowest border-l-4 border-l-amber-500 border border-outline-variant/70">
-          <p className="text-xs font-label-md uppercase tracking-wider text-amber-600/90 dark:text-amber-400">Pending Review</p>
-          <p className="text-3xl font-headline-lg text-on-surface mt-2">{stats.pending}</p>
+        {/* Pending */}
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-500">Pending Review</p>
+          <p className="text-3xl font-bold text-on-surface mt-3">{stats.pending}</p>
         </div>
 
-        <div className="security-shadow glass-effect rounded-xl p-5 bg-surface-container-lowest border-l-4 border-l-emerald-500 border border-outline-variant/70">
-          <p className="text-xs font-label-md uppercase tracking-wider text-emerald-600/90 dark:text-emerald-400">Approved Requests</p>
-          <p className="text-3xl font-headline-lg text-on-surface mt-2">{stats.approved}</p>
+        {/* Approved */}
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-500">Approved Requests</p>
+          <p className="text-3xl font-bold text-on-surface mt-3">{stats.approved}</p>
         </div>
 
-        <div className="security-shadow glass-effect rounded-xl p-5 bg-surface-container-lowest border-l-4 border-l-rose-500 border border-outline-variant/70">
-          <p className="text-xs font-label-md uppercase tracking-wider text-rose-600/90 dark:text-rose-400">Denied Requests</p>
-          <p className="text-3xl font-headline-lg text-on-surface mt-2">{stats.rejected}</p>
+        {/* Denied */}
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-500">Denied Requests</p>
+          <p className="text-3xl font-bold text-on-surface mt-3">{stats.rejected}</p>
         </div>
       </section>
 

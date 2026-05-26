@@ -243,7 +243,7 @@ const Room = () => {
               <p className="text-sm text-secondary font-body-md mt-0.5">Review your assigned hostel room, building wing, and roommates.</p>
             </div>
           </header>
-          
+
           <div className="security-shadow glass-effect rounded-xl overflow-hidden bg-surface-container-lowest p-8 flex flex-col gap-4 border border-outline-variant">
             <div className="flex justify-between items-start">
               <div>
@@ -267,33 +267,35 @@ const Room = () => {
   const hostelType = `${seater}-seater${hostel?.hasAC ? ' AC' : ' NON-AC'}`;
 
   // Roommate list count vs vacant slots count calculation
-  const roommateCount = roommateNames !== null 
-    ? roommateNames.length 
-    : (Array.isArray(room.studentIds) 
-        ? room.studentIds.filter(id => String(id) !== String(student?.id)).length 
-        : 0);
+  const roommateCount = roommateNames !== null
+    ? roommateNames.length
+    : (Array.isArray(room.studentIds)
+      ? room.studentIds.filter(id => String(id) !== String(student?.id)).length
+      : 0);
 
   const vacantCount = Math.max(0, Number(seater || 0) - roommateCount);
 
   return (
     <PageContainer>
-      <div className="max-w-[900px] mx-auto flex flex-col gap-stack-lg animate-in fade-in duration-300">
-        
+      <div className="max-w-[900px] mx-auto flex flex-col gap-6 animate-in fade-in duration-300">
+
         {/* Header Section (With rich premium styling details) */}
-        <header className="flex flex-col gap-1">
+        <header className="flex flex-col gap-1 pb-2 border-b border-outline-variant/30">
           <div>
             <h1 className="font-headline-lg text-headline-lg text-on-surface">Room Details</h1>
             <p className="text-sm text-secondary font-body-md mt-0.5">Review your assigned hostel room, building wing, and roommates.</p>
           </div>
         </header>
 
+
+
         {/* Dynamic Two-Column Layout Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
+
           {/* Left Panel: Room Info */}
           <section className="lg:col-span-2 flex flex-col gap-6">
             <div className="security-shadow glass-effect rounded-xl overflow-hidden bg-surface-container-lowest p-8 flex flex-col gap-8">
-              
+
               {/* Header inside Panel */}
               <div className="flex justify-between items-start">
                 <div className="flex flex-col">
@@ -304,7 +306,7 @@ const Room = () => {
 
               {/* Grid details border split with premium micro-icons */}
               <div className="grid grid-cols-2 gap-8 border-y border-outline-variant/30 py-8">
-                
+
                 {/* Wing field */}
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-xl bg-primary-fixed/60 text-primary shrink-0">
@@ -331,16 +333,15 @@ const Room = () => {
 
               {/* Action Buttons Section */}
               <div className="flex justify-end">
-                <button 
+                <button
                   onClick={handleLeaveRequest}
                   disabled={leaveLoading || leaveExists === true}
-                  className={`w-full md:w-auto text-white font-label-md text-label-md px-8 py-3.5 rounded-lg flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all group ${
-                    leaveLoading 
-                      ? 'bg-rose-400 cursor-not-allowed opacity-80' 
-                      : leaveExists === true 
-                        ? 'bg-gray-400 cursor-not-allowed shadow-none' 
-                        : 'bg-[#da3737] hover:bg-[#c22d2d] shadow-[#da3737]/20 hover:scale-[1.01]'
-                  }`}
+                  className={`w-full md:w-auto text-white font-label-md text-label-md px-8 py-3.5 rounded-lg flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all group ${leaveLoading
+                    ? 'bg-rose-400 cursor-not-allowed opacity-80'
+                    : leaveExists === true
+                      ? 'bg-gray-400 cursor-not-allowed shadow-none'
+                      : 'bg-[#da3737] hover:bg-[#c22d2d] shadow-[#da3737]/20 hover:scale-[1.01]'
+                    }`}
                 >
                   <LogOut className="w-5 h-5 shrink-0 text-white" />
                   <span>{leaveLoading ? 'Processing...' : (leaveExists === true ? 'Hostel Leave Request Sent' : 'Request Hostel Leave')}</span>
@@ -353,7 +354,7 @@ const Room = () => {
           {/* Right Panel: Roommates */}
           <section className="lg:col-span-1">
             <div className="security-shadow glass-effect rounded-xl overflow-hidden bg-surface-container-lowest p-6 h-full flex flex-col gap-6">
-              
+
               {/* Card Header inside Panel */}
               <div className="flex items-center gap-2 border-b border-outline-variant/30 pb-4">
                 <Users className="w-5 h-5 text-secondary" />

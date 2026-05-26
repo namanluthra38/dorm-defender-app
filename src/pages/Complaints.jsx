@@ -317,26 +317,30 @@ const Complaints = () => {
         </button>
       </div>
 
-      {/* Dashboard Bento Grid Visual Reinforcement (Matching given code styling exactly) */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-surface-container-lowest p-stack-md rounded-xl security-shadow border border-outline-variant">
-          <p className="text-label-sm font-label-sm text-secondary">Total Filed</p>
-          <p className="text-headline-md font-headline-md text-primary">{String(totalFiled).padStart(2, '0')}</p>
+      {/* Dashboard Bento Grid Visual Reinforcement */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {/* Total Filed */}
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">Total Filed</p>
+          <p className="text-3xl font-bold text-on-surface mt-3">{totalFiled}</p>
         </div>
 
-        <div className="bg-surface-container-lowest p-stack-md rounded-xl security-shadow border border-outline-variant">
-          <p className="text-label-sm font-label-sm text-secondary">Open</p>
-          <p className="text-headline-md font-headline-md text-on-primary-fixed-variant">{String(openCount).padStart(2, '0')}</p>
+        {/* Open */}
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-indigo-500">Open & New</p>
+          <p className="text-3xl font-bold text-on-surface mt-3">{openCount}</p>
         </div>
 
-        <div className="bg-surface-container-lowest p-stack-md rounded-xl security-shadow border border-outline-variant">
-          <p className="text-label-sm font-label-sm text-secondary">In Progress</p>
-          <p className="text-headline-md font-headline-md text-secondary">{String(inProgressCount).padStart(2, '0')}</p>
+        {/* In Progress */}
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">Under Review</p>
+          <p className="text-3xl font-bold text-on-surface mt-3">{inProgressCount}</p>
         </div>
 
-        <div className="bg-surface-container-lowest p-stack-md rounded-xl security-shadow border border-outline-variant">
-          <p className="text-label-sm font-label-sm text-secondary">Resolved</p>
-          <p className="text-headline-md font-headline-md text-[#15803d]">{String(resolvedCount).padStart(2, '0')}</p>
+        {/* Resolved */}
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-500">Resolved Items</p>
+          <p className="text-3xl font-bold text-on-surface mt-3">{resolvedCount}</p>
         </div>
       </div>
 

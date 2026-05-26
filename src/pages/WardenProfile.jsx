@@ -73,17 +73,7 @@ const WardenProfile = () => {
               <div className="w-20 h-20 rounded-full bg-portal-primary/10 border-2 border-portal-primary/20 flex items-center justify-center text-portal-primary shrink-0 shadow-inner">
                 <User className="w-10 h-10" />
               </div>
-              <div className="space-y-1">
-                <div className="flex items-center justify-center sm:justify-start gap-2">
                   <h2 className="text-xl font-headline-sm font-bold text-on-surface">{profile.name}</h2>
-                  <Sparkles className="w-4 h-4 text-amber-500" />
-                </div>
-                <p className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">Employee ID: {profile.employeeId}</p>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 border border-emerald-100 text-emerald-600 dark:bg-emerald-950/20 dark:border-emerald-900/30 dark:text-emerald-400 mt-1">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Authorized Administrative Staff</span>
-                </div>
-              </div>
             </div>
 
             {/* Profile specifications grid */}
@@ -114,7 +104,7 @@ const WardenProfile = () => {
                 <div className="p-4 rounded-xl border border-outline-variant/60 bg-surface-container-low flex items-start gap-3">
                   <Building className="w-4 h-4 text-portal-primary shrink-0 mt-0.5" />
                   <div>
-                    <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Primary Unit Assigned</span>
+                    <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Hostel</span>
                     <span className="text-sm font-semibold text-on-surface block mt-0.5">{profile.assignedHostel}</span>
                   </div>
                 </div>

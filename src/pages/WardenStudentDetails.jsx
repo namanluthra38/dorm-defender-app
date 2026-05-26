@@ -24,7 +24,7 @@ const WardenStudentDetails = () => {
       setLoading(true);
       setError(null);
       try {
-        const url = `${STUDENT_BASE}/students/${encodeURIComponent(studentId)}/min`;
+        const url = `${STUDENT_BASE}/students/${encodeURIComponent(studentId)}`;
         const res = await fetch(url, {
           method: 'GET',
           headers: {
@@ -104,14 +104,8 @@ const WardenStudentDetails = () => {
                 <User className="w-10 h-10" />
               </div>
               <div className="space-y-1">
-                <div className="flex items-center justify-center sm:justify-start gap-2">
-                  <h2 className="text-xl font-headline-sm font-bold text-on-surface">{data.name ?? 'Unknown'}</h2>
-                  <Sparkles className="w-4 h-4 text-amber-500" />
-                </div>
+                <h2 className="text-xl font-headline-sm font-bold text-on-surface">{data.name ?? 'Unknown'}</h2>
                 <p className="text-xs text-on-surface-variant font-bold uppercase tracking-wider">UID / ID Code: {data.uid ?? '—'}</p>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-portal-primary/10 border border-portal-primary/20 text-portal-primary mt-1">
-                  <span>Authorized Student Resident</span>
-                </div>
               </div>
             </div>
 
@@ -144,7 +138,7 @@ const WardenStudentDetails = () => {
                   <Bookmark className="w-4 h-4 text-portal-primary shrink-0 mt-0.5" />
                   <div>
                     <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Graduation Batch</span>
-                    <span className="text-sm font-semibold text-on-surface block mt-0.5">{data.graduationYear ?? '—'} Class</span>
+                    <span className="text-sm font-semibold text-on-surface block mt-0.5">{(data.graduationYear ?? data.graduation_year ?? '—')} Class</span>
                   </div>
                 </div>
 
@@ -154,7 +148,17 @@ const WardenStudentDetails = () => {
                   <div>
                     <span className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider block">Date of Birth</span>
                     <span className="text-sm font-semibold text-on-surface block mt-0.5">
-                      {data.dateOfBirth ? new Date(data.dateOfBirth).toLocaleDateString('en-US', { dateStyle: 'long' }) : '—'}
+                      {(() => {
+                        const dob = data.dateOfBirth ?? data.date_of_birth;
+                        if (!dob) return '—';
+                        try {
+                          const dt = typeof dob === 'string' ? new Date(dob) : dob;
+                          if (Number.isNaN(dt.getTime())) return dob;
+                          return dt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                        } catch (e) {
+                          return dob;
+                        }
+                      })()}
                     </span>
                   </div>
                 </div>

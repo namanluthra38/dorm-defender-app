@@ -9,7 +9,7 @@ export default function WardenHome() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-portal-background font-body-md text-on-surface">
+    <div className="min-h-screen bg-portal-background font-body-md text-on-surface warden-theme">
       {/* Sidebar Shell - Fixed on Left (Desktop) */}
       <aside className="w-[280px] h-full fixed left-0 top-0 bg-surface-container-lowest hidden md:flex flex-col p-6 border-r border-outline-variant/30 shadow-sm z-50">
         <Sidebar />

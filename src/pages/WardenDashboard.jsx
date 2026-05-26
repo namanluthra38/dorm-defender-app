@@ -128,12 +128,6 @@ export default function WardenDashboard() {
     return 'bg-portal-error/10 text-portal-error';
   };
 
-  const handleGenerateReports = () => {
-    toast.success('Generating Warden Administrative Report...');
-    setTimeout(() => {
-      window.print();
-    }, 1000);
-  };
 
   const recentAlerts = [
     { id: 1, type: 'info', text: 'Night patrol logs pending upload.' },
@@ -143,71 +137,35 @@ export default function WardenDashboard() {
   return (
     <div className="animate-in fade-in duration-300">
       {/* Header Section */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-on-surface font-headline-lg">Warden Overview</h2>
-          <p className="text-base text-on-surface-variant mt-1 font-body-lg">Hostel administration and resident oversight.</p>
-        </div>
-        <button 
-          onClick={handleGenerateReports}
-          className="px-6 py-3 bg-portal-primary text-white font-bold text-sm rounded-xl shadow-sm hover:opacity-95 active:scale-95 transition-all w-fit"
-        >
-          Generate Reports
-        </button>
+      <div className="mb-8">
+        <h2 className="text-3xl font-bold tracking-tight text-on-surface font-headline-lg">Warden Overview</h2>
+        <p className="text-base text-on-surface-variant mt-1 font-body-lg">Hostel administration and resident oversight.</p>
       </div>
 
       {/* Metric Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {/* Stat 1: Primary Hostel */}
-        <div className="bg-surface-container-lowest p-6 rounded-2xl card-shadow card-shadow-hover border-l-4 border-secondary-container transition-all">
-          <div className="flex justify-between items-start mb-4">
-            <div className="bg-secondary-fixed w-12 h-12 flex items-center justify-center rounded-xl">
-              <Building className="w-6 h-6 text-on-secondary-container" />
-            </div>
-            <span className="text-xs font-semibold text-on-surface-variant tracking-wider uppercase font-label-md">Primary Hostel</span>
-          </div>
-          <p className="text-2xl font-bold text-on-surface font-headline-md">{hostelName}</p>
-          <p className="text-xs font-medium text-on-surface-variant mt-2 tracking-wider font-label-md">Building A-1</p>
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">Hostel</p>
+          <p className="text-2xl font-bold text-on-surface mt-3 font-headline-md">{hostelName}</p>
         </div>
 
         {/* Stat 2: Total Students */}
-        <div className="bg-surface-container-lowest p-6 rounded-2xl card-shadow card-shadow-hover border-l-4 border-tertiary-container transition-all">
-          <div className="flex justify-between items-start mb-4">
-            <div className="bg-tertiary-fixed w-12 h-12 flex items-center justify-center rounded-xl">
-              <Users className="w-6 h-6 text-on-tertiary-fixed-variant" />
-            </div>
-            <span className="text-xs font-semibold text-on-surface-variant tracking-wider uppercase font-label-md">Total Students</span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <p className="text-2xl font-bold text-on-surface font-headline-md">{summary.studentsTotal.toLocaleString()}</p>
-          </div>
-          <p className="text-xs font-medium text-on-surface-variant mt-2 tracking-wider font-label-md">Students Enrolled</p>
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-indigo-500">Total Students</p>
+          <p className="text-2xl font-bold text-on-surface mt-3 font-headline-md">{summary.studentsTotal.toLocaleString()}</p>
         </div>
 
         {/* Stat 3: Open Requests */}
-        <div className="bg-surface-container-lowest p-6 rounded-2xl card-shadow card-shadow-hover border-l-4 border-portal-error transition-all">
-          <div className="flex justify-between items-start mb-4">
-            <div className="bg-error-container w-12 h-12 flex items-center justify-center rounded-xl">
-              <MessageSquare className="w-6 h-6 text-on-error-container" />
-            </div>
-            <span className="text-xs font-semibold text-on-surface-variant tracking-wider uppercase font-label-md">Open Requests</span>
-          </div>
-          <p className="text-2xl font-bold text-portal-error font-headline-md">
-            {summary.openRequests} {summary.openRequests === 1 ? 'Active' : 'Active'}
-          </p>
-          <p className="text-xs font-medium text-on-surface-variant mt-2 tracking-wider font-label-md">Pending Review</p>
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-500">Open Requests</p>
+          <p className="text-2xl font-bold text-on-surface mt-3 font-headline-md">{summary.openRequests}</p>
         </div>
 
         {/* Stat 4: Total Rooms */}
-        <div className="bg-surface-container-lowest p-6 rounded-2xl card-shadow card-shadow-hover border-l-4 border-portal-primary transition-all">
-          <div className="flex justify-between items-start mb-4">
-            <div className="bg-primary-fixed w-12 h-12 flex items-center justify-center rounded-xl">
-              <Grid className="w-6 h-6 text-portal-primary" />
-            </div>
-            <span className="text-xs font-semibold text-on-surface-variant tracking-wider uppercase font-label-md">Total Rooms</span>
-          </div>
-          <p className="text-2xl font-bold text-on-surface font-headline-md">{summary.roomsTotal} Units</p>
-          <p className="text-xs font-medium text-on-surface-variant mt-2 tracking-wider font-label-md">Allocated Rooms</p>
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-500">Total Rooms</p>
+          <p className="text-2xl font-bold text-on-surface mt-3 font-headline-md">{summary.roomsTotal} Units</p>
         </div>
       </div>
 

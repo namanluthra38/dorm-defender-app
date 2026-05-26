@@ -105,7 +105,7 @@ export default function Sidebar({ onToggle, isMobile = false }) {
             <nav className="flex-1 space-y-1">
                 <NavLink to="." end className={linkClass} onClick={onToggle}>
                     <LayoutDashboard className="w-5 h-5 shrink-0" />
-                    <span className="font-body-md">Overview</span>
+                    <span className="font-body-md">Dashboard</span>
                 </NavLink>
 
                 <NavLink to="complaints" className={linkClass} onClick={onToggle}>

@@ -312,62 +312,40 @@ export default function StudentDashboard() {
     <div className="animate-in fade-in duration-300">
       {/* Header Section */}
       <div className="mb-8">
-        <h2 className="text-3xl font-bold tracking-tight text-on-surface font-headline-lg">Overview</h2>
+        <h2 className="text-3xl font-bold tracking-tight text-on-surface font-headline-lg">Dashboard</h2>
         <p className="text-base text-on-surface-variant mt-1 font-body-lg">Quick access to your residence details and updates.</p>
       </div>
 
       {/* Metric Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {/* Hostel Building Card */}
-        <div className="bg-surface-container-lowest p-6 rounded-2xl card-shadow card-shadow-hover border-l-4 border-secondary-container transition-all">
-          <div className="flex justify-between items-start mb-4">
-            <div className="bg-secondary-fixed w-12 h-12 flex items-center justify-center rounded-xl">
-              <Building className="w-6 h-6 text-on-secondary-container" />
-            </div>
-            <span className="text-xs font-semibold text-on-surface-variant tracking-wider uppercase font-label-md">Hostel Building</span>
-          </div>
-          <p className="text-2xl font-bold text-on-surface font-headline-md">{summary.hostelName}</p>
-          <p className="text-xs font-medium text-on-surface-variant mt-2 tracking-wider font-label-md">{summary.wing}</p>
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">Hostel Building</p>
+          <p className="text-2xl font-bold text-on-surface mt-3 font-headline-md">{summary.hostelName || '—'}</p>
+          <p className="text-xs text-on-surface-variant mt-1.5 font-medium">{summary.wing || 'Building Block'}</p>
         </div>
 
         {/* Room Number Card */}
-        <div className="bg-surface-container-lowest p-6 rounded-2xl card-shadow card-shadow-hover border-l-4 border-tertiary-container transition-all">
-          <div className="flex justify-between items-start mb-4">
-            <div className="bg-tertiary-fixed w-12 h-12 flex items-center justify-center rounded-xl">
-              <User className="w-6 h-6 text-on-tertiary-fixed-variant" />
-            </div>
-            <span className="text-xs font-semibold text-on-surface-variant tracking-wider uppercase font-label-md">Room Number</span>
-          </div>
-          <p className="text-2xl font-bold text-on-surface font-headline-md">{summary.room}</p>
-          <p className="text-xs font-medium text-on-surface-variant mt-2 tracking-wider font-label-md">{summary.seater}</p>
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-indigo-500">Room Number</p>
+          <p className="text-2xl font-bold text-on-surface mt-3 font-headline-md">{summary.room || '—'}</p>
+          <p className="text-xs text-on-surface-variant mt-1.5 font-medium">{summary.seater || 'Occupancy'}</p>
         </div>
 
         {/* Open Complaints Card */}
-        <div className="bg-surface-container-lowest p-6 rounded-2xl card-shadow card-shadow-hover border-l-4 border-portal-error transition-all">
-          <div className="flex justify-between items-start mb-4">
-            <div className="bg-error-container w-12 h-12 flex items-center justify-center rounded-xl">
-              <MessageSquare className="w-6 h-6 text-on-error-container" />
-            </div>
-            <span className="text-xs font-semibold text-on-surface-variant tracking-wider uppercase font-label-md">Open Complaints</span>
-          </div>
-          <p className="text-2xl font-bold text-on-surface font-headline-md">
-            {summary.complaintsOpen} {summary.complaintsOpen === 1 ? 'Active' : 'Active'}
-          </p>
-          <p className="text-xs font-medium text-on-surface-variant mt-2 tracking-wider font-label-md">
-            {summary.highPriorityCount} {summary.highPriorityCount === 1 ? 'High Priority' : 'High Priority'}
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-500">Open Complaints</p>
+          <p className="text-2xl font-bold text-on-surface mt-3 font-headline-md">{summary.complaintsOpen}</p>
+          <p className="text-xs text-on-surface-variant mt-1.5 font-medium">
+            {summary.highPriorityCount > 0 ? `${summary.highPriorityCount} High Priority` : 'No Critical Items'}
           </p>
         </div>
 
         {/* Latest Announcement Card */}
-        <div className="bg-surface-container-lowest p-6 rounded-2xl card-shadow card-shadow-hover border-l-4 border-portal-primary transition-all">
-          <div className="flex justify-between items-start mb-4">
-            <div className="bg-primary-fixed w-12 h-12 flex items-center justify-center rounded-xl">
-              <FileText className="w-6 h-6 text-portal-primary" />
-            </div>
-            <span className="text-xs font-semibold text-on-surface-variant tracking-wider uppercase font-label-md">Latest Announcement</span>
-          </div>
-          <p className="text-lg font-bold text-on-surface leading-snug line-clamp-1 font-title-lg">{summary.announcementTitle}</p>
-          <p className="text-xs font-medium text-on-surface-variant mt-3 tracking-wider font-label-md">{summary.announcementTime}</p>
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-500">Latest Announcement</p>
+          <p className="text-lg font-bold text-on-surface mt-3 leading-snug line-clamp-1 font-title-lg">{summary.announcementTitle || 'No updates'}</p>
+          <p className="text-xs text-on-surface-variant mt-1.5 font-medium">{summary.announcementTime || 'Just now'}</p>
         </div>
       </div>
 
@@ -436,7 +414,7 @@ export default function StudentDashboard() {
           {/* Interactive Action Button */}
           <button 
             onClick={() => setShowNewComplaintModal(true)}
-            className="w-full mt-6 py-3 bg-portal-primary text-white font-bold text-base rounded-xl shadow-sm hover:opacity-95 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            className="w-full mt-6 py-3 border border-outline-variant text-portal-primary font-bold text-base rounded-xl hover:bg-surface-container-low active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
             <Plus className="w-5 h-5" /> New Complaint
           </button>
@@ -511,14 +489,6 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      {/* Floating Action Button Contextual */}
-      <button 
-        onClick={() => setShowNewComplaintModal(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-secondary-container text-on-secondary-container hover:scale-105 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-all z-40 group hover:shadow-2xl"
-        title="Quick Complaint"
-      >
-        <Plus className="w-6 h-6 transition-transform group-hover:rotate-90 duration-300" />
-      </button>
 
       {/* Slide-over Modal for New Complaint */}
       {showNewComplaintModal && (

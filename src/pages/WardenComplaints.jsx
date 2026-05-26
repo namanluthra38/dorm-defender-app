@@ -215,27 +215,27 @@ const WardenComplaints = () => {
       {/* Bento metrics summary cards */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Filed */}
-        <div className="security-shadow glass-effect rounded-xl p-5 bg-surface-container-lowest border-l-4 border-l-slate-400 border border-outline-variant/70">
-          <p className="text-xs font-label-md uppercase tracking-wider text-on-surface-variant">Total Complaints</p>
-          <p className="text-3xl font-headline-lg text-on-surface mt-2">{stats.total}</p>
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500">Total Complaints</p>
+          <p className="text-3xl font-bold text-on-surface mt-3">{stats.total}</p>
         </div>
 
         {/* Open */}
-        <div className="security-shadow glass-effect rounded-xl p-5 bg-surface-container-lowest border-l-4 border-l-indigo-500 border border-outline-variant/70">
-          <p className="text-xs font-label-md uppercase tracking-wider text-indigo-600/90 dark:text-indigo-400">Open & New</p>
-          <p className="text-3xl font-headline-lg text-on-surface mt-2">{stats.open}</p>
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-indigo-500">Open & New</p>
+          <p className="text-3xl font-bold text-on-surface mt-3">{stats.open}</p>
         </div>
 
         {/* In Progress */}
-        <div className="security-shadow glass-effect rounded-xl p-5 bg-surface-container-lowest border-l-4 border-l-amber-500 border border-outline-variant/70">
-          <p className="text-xs font-label-md uppercase tracking-wider text-amber-600/90 dark:text-amber-400">Under Review</p>
-          <p className="text-3xl font-headline-lg text-on-surface mt-2">{stats.inProgress}</p>
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-550 text-amber-600 dark:text-amber-500">Under Review</p>
+          <p className="text-3xl font-bold text-on-surface mt-3">{stats.inProgress}</p>
         </div>
 
         {/* Resolved */}
-        <div className="security-shadow glass-effect rounded-xl p-5 bg-surface-container-lowest border-l-4 border-l-emerald-500 border border-outline-variant/70">
-          <p className="text-xs font-label-md uppercase tracking-wider text-emerald-600/90 dark:text-emerald-400">Resolved Items</p>
-          <p className="text-3xl font-headline-lg text-on-surface mt-2">{stats.resolved}</p>
+        <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+          <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-500">Resolved Items</p>
+          <p className="text-3xl font-bold text-on-surface mt-3">{stats.resolved}</p>
         </div>
       </section>
 

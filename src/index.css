@@ -166,24 +166,58 @@ All colors MUST be HSL.
 .px-margin-lg { padding-left: 2rem; padding-right: 2rem; }
 
 /* Mockup Specific Color & Style Overrides */
+:root {
+  --portal-primary: #3b5fad;
+  --primary-container: #2d4a77;
+  --primary-fixed: #dde1ff;
+  --on-primary-fixed-variant: #263f69;
+  --surface-container-low: #eff4ff;
+  --surface-container: #e5eeff;
+  --surface-container-high: #dce9ff;
+  --surface-container-highest: #d3e4fe;
+  --portal-background: #f8f9ff;
+  --surface-variant: #d3e4fe;
+}
+
+/* Soothing Warden Green Theme */
+.warden-theme {
+  --portal-primary: #40b835; /* Soothing, bright grass green */
+  --primary-container: #1b4b17; /* Deep matching steel-green */
+  --primary-fixed: #d2f0d4; /* Soothing light sage bg */
+  --on-primary-fixed-variant: #133c16; /* Deep matching green text */
+  --surface-container-low: #effae5; /* Extremely pale sage */
+  --surface-container: #e4f6ea; /* Soft pale sage */
+  --surface-container-high: #d6f2de; /* Moderate pale sage */
+  --surface-container-highest: #c4ecd0; /* Deeper pale sage */
+  --portal-background: #f7fdf6; /* Soothing pale green page background */
+  --surface-variant: #d6f2de;
+}
+
+.warden-theme.mesh-background, .warden-theme .mesh-background {
+  background-color: #f7fdf6;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(64, 184, 53, 0.1) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(221, 255, 221, 0.15) 0px, transparent 50%);
+}
+
 .bg-surface-container-lowest { background-color: #ffffff !important; }
-.bg-surface-container-low { background-color: #eff4ff !important; }
-.bg-surface-container { background-color: #e5eeff !important; }
-.bg-surface-container-high { background-color: #dce9ff !important; }
-.bg-surface-container-highest { background-color: #d3e4fe !important; }
+.bg-surface-container-low { background-color: var(--surface-container-low, #eff4ff) !important; }
+.bg-surface-container { background-color: var(--surface-container, #e5eeff) !important; }
+.bg-surface-container-high { background-color: var(--surface-container-high, #dce9ff) !important; }
+.bg-surface-container-highest { background-color: var(--surface-container-highest, #d3e4fe) !important; }
 .border-outline-variant { border-color: #c4c5d5 !important; }
 .text-outline { color: #757684 !important; }
 
-.bg-primary { background-color: #00288e !important; }
-.text-primary { color: #00288e !important; }
-.border-primary { border-color: #00288e !important; }
-.hover\:border-primary:hover { border-color: #00288e !important; }
-.hover\:text-primary:hover { color: #00288e !important; }
+.bg-primary { background-color: var(--portal-primary, #00288e) !important; }
+.text-primary { color: var(--portal-primary, #00288e) !important; }
+.border-primary { border-color: var(--portal-primary, #00288e) !important; }
+.hover\:border-primary:hover { border-color: var(--portal-primary, #00288e) !important; }
+.hover\:text-primary:hover { color: var(--portal-primary, #00288e) !important; }
 .text-secondary { color: #545f73 !important; }
 .text-on-surface-variant { color: #444653 !important; }
 .text-on-surface { color: #0b1c30 !important; }
-.text-on-primary-fixed-variant { color: #173bab !important; }
-.bg-primary-fixed { background-color: #dde1ff !important; }
+.text-on-primary-fixed-variant { color: var(--on-primary-fixed-variant, #173bab) !important; }
+.bg-primary-fixed { background-color: var(--primary-fixed, #dde1ff) !important; }
 
 .glass-effect {
   background: rgba(255, 255, 255, 0.75) !important;

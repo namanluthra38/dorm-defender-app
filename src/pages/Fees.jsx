@@ -45,19 +45,22 @@ const Fees = () => {
 
         {/* Bento Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-surface-container-lowest p-stack-md rounded-xl security-shadow border border-outline-variant flex flex-col justify-between">
-            <span className="font-label-sm text-label-sm text-secondary uppercase tracking-wider">Total Term Fees</span>
-            <span className="font-headline-md text-headline-md text-primary mt-2">₹{fees.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+          {/* Total Term Fees */}
+          <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-500 block">Total Term Fees</span>
+            <span className="text-2xl font-bold text-on-surface mt-3 block">₹{fees.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
           </div>
 
-          <div className="bg-surface-container-lowest p-stack-md rounded-xl security-shadow border border-outline-variant flex flex-col justify-between">
-            <span className="font-label-sm text-label-sm text-secondary uppercase tracking-wider">Amount Paid</span>
-            <span className="font-headline-md text-headline-md text-[#15803d] mt-2">₹{fees.paid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+          {/* Amount Paid */}
+          <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-500 block">Amount Paid</span>
+            <span className="text-2xl font-bold text-on-surface mt-3 block">₹{fees.paid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
           </div>
 
-          <div className="bg-surface-container-lowest p-stack-md rounded-xl security-shadow border border-outline-variant flex flex-col justify-between">
-            <span className="font-label-sm text-label-sm text-secondary uppercase tracking-wider">Outstanding Dues</span>
-            <span className="font-headline-md text-headline-md text-[#da3737] mt-2">₹{fees.due.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+          {/* Outstanding Dues */}
+          <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-500 block">Outstanding Dues</span>
+            <span className="text-2xl font-bold text-on-surface mt-3 block">₹{fees.due.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
           </div>
         </div>
 

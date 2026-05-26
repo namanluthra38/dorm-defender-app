@@ -31,7 +31,7 @@ const WardenStudents = () => {
   const filtered = useMemo(() => {
     const q = debouncedQuery.toLowerCase();
     const list = normalizedStudents.slice();
-    
+
     // Sort by roomNumber if present (numeric), else by roomId/string
     list.sort((a, b) => {
       const ar = a.roomId || a.room || '';
@@ -43,7 +43,7 @@ const WardenStudents = () => {
       if (isNaN(an) && !isNaN(bn)) return 1;
       return String(ar).localeCompare(String(br));
     });
-    
+
     if (!q) return list;
     return list.filter(s => {
       const hay = `${s.name ?? ''} ${s.uid ?? s.id ?? ''} ${s.roomNumber ?? s.roomId ?? s.room ?? ''} ${s.email ?? ''}`.toLowerCase();
@@ -51,9 +51,18 @@ const WardenStudents = () => {
     });
   }, [normalizedStudents, debouncedQuery]);
 
+  const stats = useMemo(() => {
+    const list = students || [];
+    const total = list.length;
+    const allocated = list.filter(s => s.roomId).length;
+    const pendingPlacement = total - allocated;
+    const matchCount = filtered.length;
+    return { total, allocated, pendingPlacement, matchCount };
+  }, [students, filtered]);
+
   return (
     <div className="max-w-[1000px] mx-auto flex flex-col gap-6 animate-in fade-in duration-300">
-      
+
       {/* Header Section */}
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-2 border-b border-outline-variant/30">
         <div>
@@ -66,15 +75,15 @@ const WardenStudents = () => {
         {/* Branded Search input */}
         <div className="relative w-full md:w-80 shrink-0">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/70" />
-          <input 
-            type="text" 
+          <input
+            type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Search by name, UID, room..."
             className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm outline-none focus:border-portal-primary/60 transition-all text-on-surface"
           />
           {query && (
-            <button 
+            <button
               onClick={() => setQuery('')}
               className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-on-surface-variant/80 hover:bg-surface-variant/15 rounded-full transition-all"
             >
@@ -83,14 +92,6 @@ const WardenStudents = () => {
           )}
         </div>
       </header>
-
-      {/* Stats Board */}
-      {!isLoading && students.length > 0 && (
-        <div className="flex items-center gap-3 self-start bg-surface-container-high/40 border border-outline-variant/30 px-4 py-2 rounded-xl text-xs font-semibold text-on-surface-variant">
-          <UserCheck className="w-4 h-4 text-portal-primary" />
-          <span>Active Registry Directory: <span className="font-bold text-on-surface">{filtered.length} students</span> filtered ({students.length} total)</span>
-        </div>
-      )}
 
       {/* Directory Grid */}
       <div className="bg-surface-container-lowest security-shadow glass-effect rounded-2xl p-6 border border-outline-variant">
@@ -112,46 +113,38 @@ const WardenStudents = () => {
         ) : (
           <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filtered.map(s => (
-              <li 
+              <li
                 key={s.id}
                 className="security-shadow glass-effect rounded-xl border border-outline-variant bg-surface p-5 hover:border-portal-primary/30 transition-all duration-300 flex flex-col justify-between"
               >
                 <div>
-                  {/* Top profile banner */}
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-full bg-portal-primary/10 border border-portal-primary/20 flex items-center justify-center text-portal-primary shrink-0">
-                      <User className="w-5 h-5" />
+                  {/* Top profile banner with top-right room number */}
+                  <div className="flex justify-between items-start mb-2">
+                    {/* Identity block */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-portal-primary/10 border border-portal-primary/20 flex items-center justify-center text-portal-primary shrink-0">
+                        <User className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-sm text-on-surface line-clamp-1 leading-snug">{s.name}</h3>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">UID: {s.uid ?? s.id}</span>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-sm text-on-surface line-clamp-1 leading-snug">{s.name}</h3>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">UID: {s.uid ?? s.id}</span>
-                    </div>
-                  </div>
 
-                  {/* Student location and contacts */}
-                  <div className="space-y-2 text-xs text-on-surface-variant font-medium mb-4">
-                    <div className="flex items-center gap-2 text-portal-primary font-bold bg-portal-primary/5 border border-portal-primary/10 rounded-lg p-2.5">
-                      <Building className="w-3.5 h-3.5 shrink-0" />
-                      <span>Allocated: {s.roomNumber ? `Room ${s.roomNumber}` : s.roomId ? `Room ID: ${s.roomId}` : 'Unassigned'}</span>
+                    {/* Room number on top right corner */}
+                    <div className="text-right shrink-0">
+                      {s.roomNumber ? (
+                        <span className="text-3xl font-black text-portal-primary font-headline-lg leading-none">{s.roomNumber}</span>
+                      ) : (
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/60 bg-surface-container-high px-2 py-0.5 rounded">Unassigned</span>
+                      )}
                     </div>
-                    {s.email && (
-                      <div className="flex items-center gap-2">
-                        <Mail className="w-3.5 h-3.5 text-on-surface-variant/70 shrink-0" />
-                        <span className="truncate">{s.email}</span>
-                      </div>
-                    )}
-                    {s.phone && (
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-3.5 h-3.5 text-on-surface-variant/70 shrink-0" />
-                        <span>{s.phone}</span>
-                      </div>
-                    )}
                   </div>
                 </div>
 
                 {/* Inspect Action */}
                 <div className="border-t border-outline-variant/20 pt-4 mt-auto">
-                  <button 
+                  <button
                     onClick={() => navigate(`/warden/students/${s.id}`)}
                     className="w-full flex items-center justify-center gap-1.5 bg-portal-primary hover:bg-portal-primary/95 text-white font-semibold text-xs py-2.5 rounded-lg active:scale-[0.98] shadow-md shadow-portal-primary/10 transition-all hover:scale-[1.01]"
                   >

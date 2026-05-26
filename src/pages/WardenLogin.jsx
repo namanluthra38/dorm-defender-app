@@ -69,7 +69,7 @@ export default function WardenLogin() {
   };
 
   return (
-    <div className="bg-background mesh-background min-h-screen flex items-center justify-center p-4 font-body-md text-on-surface animate-in fade-in duration-300">
+    <div className="bg-background mesh-background min-h-screen flex items-center justify-center p-4 font-body-md text-on-surface animate-in fade-in duration-300 warden-theme">
       {/* Main Authentication Container */}
       <main className="w-full max-w-[440px]">
         {/* Login Card */}

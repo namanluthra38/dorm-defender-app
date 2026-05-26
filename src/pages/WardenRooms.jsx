@@ -62,22 +62,29 @@ const WardenRooms = () => {
 
       {/* Summary statistics bar */}
       {!isLoading && rooms.length > 0 && (
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="security-shadow glass-effect rounded-xl p-4 bg-surface-container-lowest border-l-4 border-l-portal-primary border border-outline-variant/60">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Total Rooms</p>
-            <p className="text-xl font-headline-lg text-on-surface mt-1">{summary.totalRooms}</p>
+        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Total Rooms */}
+          <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-portal-primary">Total Rooms</p>
+            <p className="text-3xl font-bold text-on-surface mt-3">{summary.totalRooms}</p>
           </div>
-          <div className="security-shadow glass-effect rounded-xl p-4 bg-surface-container-lowest border-l-4 border-l-indigo-500 border border-outline-variant/60">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Occupied Seats</p>
-            <p className="text-xl font-headline-lg text-on-surface mt-1">{summary.totalFilled} seats</p>
+
+          {/* Occupied Seats */}
+          <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-indigo-500">Occupied Seats</p>
+            <p className="text-3xl font-bold text-on-surface mt-3">{summary.totalFilled} seats</p>
           </div>
-          <div className="security-shadow glass-effect rounded-xl p-4 bg-surface-container-lowest border-l-4 border-l-emerald-500 border border-outline-variant/60">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Total Seater Capacity</p>
-            <p className="text-xl font-headline-lg text-on-surface mt-1">{summary.totalCapacity} seats</p>
+
+          {/* Total Seater Capacity */}
+          <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-500">Total Seater Capacity</p>
+            <p className="text-3xl font-bold text-on-surface mt-3">{summary.totalCapacity} seats</p>
           </div>
-          <div className="security-shadow glass-effect rounded-xl p-4 bg-surface-container-lowest border-l-4 border-l-amber-500 border border-outline-variant/60">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Avg Occupancy Rate</p>
-            <p className="text-xl font-headline-lg text-on-surface mt-1">{summary.avgOccupancy}% filled</p>
+
+          {/* Avg Occupancy Rate */}
+          <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/60 shadow-sm transition-all">
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-500">Avg Occupancy Rate</p>
+            <p className="text-3xl font-bold text-on-surface mt-3">{summary.avgOccupancy}% filled</p>
           </div>
         </section>
       )}

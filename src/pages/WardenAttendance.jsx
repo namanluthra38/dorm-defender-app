@@ -10,17 +10,15 @@ const sampleRecords = [
 
 const WardenAttendance = () => {
   const [records, setRecords] = useState(sampleRecords);
-  const [fromDate, setFromDate] = useState('2026-05-23');
-  const [toDate, setToDate] = useState('2026-05-25');
+  const [selectedYear, setSelectedYear] = useState('2026');
+  const [selectedMonth, setSelectedMonth] = useState('05');
 
   const filtered = useMemo(() => {
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
     return records.filter(r => {
-      const d = new Date(r.date);
-      return d >= from && d <= to;
+      const [year, month] = r.date.split('-');
+      return year === selectedYear && month === selectedMonth;
     });
-  }, [records, fromDate, toDate]);
+  }, [records, selectedYear, selectedMonth]);
 
   const exportCSV = () => {
     try {
@@ -29,7 +27,7 @@ const WardenAttendance = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `attendance_${fromDate}_to_${toDate}.csv`;
+      a.download = `attendance_${selectedYear}_${selectedMonth}.csv`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success('Attendance CSV exported successfully!');
@@ -45,18 +43,9 @@ const WardenAttendance = () => {
     return { present, total, percent: Math.round((present / total) * 100) };
   }, [filtered]);
 
-  // Bento stats
-  const metrics = useMemo(() => {
-    if (!filtered.length) return { peak: 0, low: 0 };
-    const counts = filtered.map(r => r.present);
-    const peak = Math.max(...counts);
-    const low = Math.min(...counts);
-    return { peak, low };
-  }, [filtered]);
-
   return (
     <div className="max-w-[900px] mx-auto flex flex-col gap-6 animate-in fade-in duration-300">
-      
+
       {/* Header section */}
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-outline-variant/30">
         <div>
@@ -65,93 +54,64 @@ const WardenAttendance = () => {
             Track student check-in summaries, filter daily logs, and generate reports.
           </p>
         </div>
-        <button 
-          onClick={exportCSV} 
+        <button
+          onClick={exportCSV}
           disabled={filtered.length === 0}
-          className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold active:scale-[0.98] transition-all border ${
-            filtered.length === 0
+          className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold active:scale-[0.98] transition-all border ${filtered.length === 0
               ? 'bg-surface-container-high border-outline-variant/60 text-on-surface-variant/50 cursor-not-allowed'
               : 'bg-portal-primary hover:bg-portal-primary/95 text-white border-transparent shadow-lg shadow-portal-primary/20 hover:scale-[1.01]'
-          }`}
+            }`}
         >
           <Download className="w-4 h-4 shrink-0" />
           <span>Export CSV</span>
         </button>
       </header>
 
-      {/* Metrics bento row */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Overall Percent */}
-        <div className="security-shadow glass-effect rounded-xl p-5 bg-surface-container-lowest border-l-4 border-l-portal-primary border border-outline-variant/70">
-          <div className="flex items-center justify-between text-on-surface-variant">
-            <p className="text-xs font-label-md uppercase tracking-wider">Avg Presence</p>
-            <Percent className="w-4 h-4 text-portal-primary" />
-          </div>
-          <p className="text-2xl font-headline-lg text-on-surface mt-2">{overall.percent}%</p>
-        </div>
-
-        {/* Total Ratio */}
-        <div className="security-shadow glass-effect rounded-xl p-5 bg-surface-container-lowest border-l-4 border-l-indigo-500 border border-outline-variant/70">
-          <div className="flex items-center justify-between text-on-surface-variant">
-            <p className="text-xs font-label-md uppercase tracking-wider">Total Scans</p>
-            <Users className="w-4 h-4 text-indigo-500" />
-          </div>
-          <p className="text-2xl font-headline-lg text-on-surface mt-2">{overall.present} / {overall.total}</p>
-        </div>
-
-        {/* Peak count */}
-        <div className="security-shadow glass-effect rounded-xl p-5 bg-surface-container-lowest border-l-4 border-l-emerald-500 border border-outline-variant/70">
-          <div className="flex items-center justify-between text-on-surface-variant">
-            <p className="text-xs font-label-md uppercase tracking-wider">Peak Presence</p>
-            <TrendingUp className="w-4 h-4 text-emerald-500" />
-          </div>
-          <p className="text-2xl font-headline-lg text-on-surface mt-2">{metrics.peak || 0} stds</p>
-        </div>
-
-        {/* Low count */}
-        <div className="security-shadow glass-effect rounded-xl p-5 bg-surface-container-lowest border-l-4 border-l-rose-500 border border-outline-variant/70">
-          <div className="flex items-center justify-between text-on-surface-variant">
-            <p className="text-xs font-label-md uppercase tracking-wider">Lowest Count</p>
-            <UserCheck className="w-4 h-4 text-rose-500" />
-          </div>
-          <p className="text-2xl font-headline-lg text-on-surface mt-2">{metrics.low || 0} stds</p>
-        </div>
-      </section>
-
-      {/* Date Range Picking Dock */}
+      {/* Date Year + Month Picking Dock */}
       <div className="security-shadow glass-effect rounded-xl p-4 bg-surface-container-lowest border border-outline-variant/70 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-4 text-sm text-on-surface">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-portal-primary" />
-            <span className="font-bold text-xs uppercase tracking-wider text-on-surface-variant">Filter Range</span>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-medium text-on-surface-variant">From</label>
-            <input 
-              type="date" 
-              value={fromDate} 
-              onChange={e => setFromDate(e.target.value)} 
-              className="border border-outline-variant bg-surface rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-portal-primary/60 transition-all text-on-surface" 
-            />
+            <span className="font-bold text-xs uppercase tracking-wider text-on-surface-variant">Filter Period</span>
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="text-xs font-medium text-on-surface-variant">To</label>
-            <input 
-              type="date" 
-              value={toDate} 
-              onChange={e => setToDate(e.target.value)} 
-              className="border border-outline-variant bg-surface rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-portal-primary/60 transition-all text-on-surface" 
-            />
+            <label className="text-xs font-medium text-on-surface-variant">Year</label>
+            <select
+              value={selectedYear}
+              onChange={e => setSelectedYear(e.target.value)}
+              className="border border-outline-variant bg-surface rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-portal-primary/60 transition-all text-on-surface cursor-pointer font-semibold"
+            >
+              <option value="2026">2026</option>
+              <option value="2025">2025</option>
+              <option value="2024">2024</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-on-surface-variant">Month</label>
+            <select
+              value={selectedMonth}
+              onChange={e => setSelectedMonth(e.target.value)}
+              className="border border-outline-variant bg-surface rounded-lg px-2.5 py-1.5 text-xs outline-none focus:border-portal-primary/60 transition-all text-on-surface cursor-pointer font-semibold"
+            >
+              <option value="01">January</option>
+              <option value="02">February</option>
+              <option value="03">March</option>
+              <option value="04">April</option>
+              <option value="05">May</option>
+              <option value="06">June</option>
+              <option value="07">July</option>
+              <option value="08">August</option>
+              <option value="09">September</option>
+              <option value="10">October</option>
+              <option value="11">November</option>
+              <option value="12">December</option>
+            </select>
           </div>
         </div>
 
-        {overall.percent > 0 && (
-          <div className="text-xs text-on-surface-variant font-medium bg-surface-container-high border rounded-lg px-3 py-1.5 self-start md:self-auto">
-            Selection Summary: <span className="font-semibold text-portal-primary">{overall.present}/{overall.total} present</span> ({overall.percent}%)
-          </div>
-        )}
+
       </div>
 
       {/* Attendance Logs list */}
@@ -169,13 +129,13 @@ const WardenAttendance = () => {
         ) : (
           <div className="space-y-4">
             <h3 className="font-bold text-xs uppercase tracking-wider text-on-surface-variant mb-2">Daily Attendance Entries</h3>
-            
+
             <ul className="space-y-4">
               {filtered.map(r => {
                 const percent = Math.round((r.present / r.total) * 100);
-                
+
                 return (
-                  <li 
+                  <li
                     key={r.id}
                     className="p-5 rounded-xl border border-outline-variant/60 bg-surface flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-portal-primary/20"
                   >
@@ -197,8 +157,8 @@ const WardenAttendance = () => {
                     {/* Progress Bar & Percentage display */}
                     <div className="flex items-center gap-4 sm:w-48 justify-between">
                       <div className="w-full bg-surface-container-high rounded-full h-2 overflow-hidden border border-outline-variant/10">
-                        <div 
-                          className="bg-portal-primary h-full rounded-full transition-all duration-500" 
+                        <div
+                          className="bg-portal-primary h-full rounded-full transition-all duration-500"
                           style={{ width: `${percent}%` }}
                         />
                       </div>
